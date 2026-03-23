@@ -4,6 +4,7 @@ export const ROUTES = {
   LOGIN: "/login",
   SIGNUP: "/signup",
   DASHBOARD: "/dashboard",
+  RESET_PASSWORD: "/reset-password",
 };
 
 // API endpoints
@@ -13,6 +14,7 @@ export const API_ENDPOINTS = {
     LOGIN: "/auth/login",
     ME: "/auth/me",
     LOGOUT: "/auth/logout",
+    RESET_PASSWORD: "/auth/reset-password",
   },
 };
 

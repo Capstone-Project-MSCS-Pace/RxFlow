@@ -94,9 +94,12 @@ const LoginPage = () => {
                 <input type="checkbox" disabled={loading} />
                 <span>Remember me</span>
               </label>
-              <a href="#forgot" className="forgot-link">
+              {/* <a href="#forgot" className="forgot-link">
                 Forgot password?
-              </a>
+              </a> */}
+              <Link to={ROUTES.RESET_PASSWORD} className="forgot-link">
+                Forgot password?
+              </Link>
             </div>
 
             <button

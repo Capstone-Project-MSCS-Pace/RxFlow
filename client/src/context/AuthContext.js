@@ -65,6 +65,11 @@ export const AuthProvider = ({ children }) => {
     setIsAuthenticated(false);
   };
 
+  const resetPassword = async (email, newPassword) => {
+    const result = await api.resetPassword(email, newPassword);
+    return result;
+  };
+
   const value = {
     user,
     loading,
@@ -72,6 +77,7 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
+    resetPassword,
   };
 
   return (

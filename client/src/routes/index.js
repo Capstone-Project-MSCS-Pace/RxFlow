@@ -3,6 +3,7 @@ import WebsitePage from "../modules/website/WebsitePage";
 import LoginPage from "../modules/auth/LoginPage";
 import SignupPage from "../modules/auth/SignupPage";
 import DashboardPage from "../modules/dashboard/DashboardPage";
+import ResetPasswordPage from "../modules/auth/ResetPasswordPage";
 import ProtectedRoute from "../components/ProtectedRoute.js";
 import { AuthProvider } from "../context/AuthContext.js";
 import { ROUTES } from "../config/routes.js";
@@ -15,6 +16,7 @@ const AppRoutes = () => {
           <Route path={ROUTES.HOME} element={<WebsitePage />} />
           <Route path={ROUTES.LOGIN} element={<LoginPage />} />
           <Route path={ROUTES.SIGNUP} element={<SignupPage />} />
+          <Route path={ROUTES.RESET_PASSWORD} element={<ResetPasswordPage />} />
           <Route
             path={ROUTES.DASHBOARD}
             element={

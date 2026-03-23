@@ -12,7 +12,7 @@ import User from "./models/User.js";
 const app = express();
 
 // Connect to PostgreSQL and start server
-const startServer = async () => {
+const startServer = async () => { 
   try {
     await connectDB();
 

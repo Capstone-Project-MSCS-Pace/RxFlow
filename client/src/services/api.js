@@ -184,6 +184,16 @@ class ApiService {
     }
   }
 
+  async resetPassword(email, newPassword) {
+    return await this.request(API_ENDPOINTS.AUTH.RESET_PASSWORD, {
+      method: "POST",
+      body: JSON.stringify({
+        email,
+        newPassword,
+      }),
+    });
+  }
+
   getToken() {
     return localStorage.getItem("token");
   }

@@ -1,0 +1,169 @@
+/* Dashboard Container */
+.dashboard-container {
+  padding: 2rem;
+  background: var(--soft-bg);
+  min-height: 100vh;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Top Bar */
+.dashboard-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--navy), var(--navy-light));
+  color: white;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+}
+
+.dashboard-topbar h2 {
+  margin: 0;
+  font-size: 1.8rem;
+}
+
+.dashboard-topbar .user-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.dashboard-topbar .role-badge {
+  background: linear-gradient(135deg, var(--teal), var(--accent));
+  padding: 0.25rem 0.7rem;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: white;
+}
+
+.dashboard-topbar button {
+  padding: 0.6rem 1.4rem;
+  background: linear-gradient(135deg, var(--accent), var(--teal));
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0,212,196,0.3);
+}
+
+.dashboard-topbar button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0,212,196,0.4);
+}
+
+/* Stats Cards */
+.stats-cards {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin-top: 2rem;
+}
+
+.stats-card {
+  flex: 1;
+  min-width: 180px;
+  padding: 1.5rem;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--soft-bg), white);
+  border-left: 5px solid var(--teal);
+  box-shadow: var(--box-shadow);
+  transition: all 0.3s ease;
+  cursor: default;
+}
+
+.stats-card:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--box-shadow-lg);
+}
+
+.stats-card h3 {
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+  color: var(--navy);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.stats-card p {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--accent);
+}
+
+/* Main Sections */
+.main-sections {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1.5rem;
+  margin-top: 2.5rem;
+}
+
+.main-section {
+  background: linear-gradient(135deg, var(--soft-bg), white);
+  border-radius: 12px;
+  padding: 1.8rem;
+  box-shadow: var(--box-shadow);
+  border-left: 5px solid var(--teal);
+  transition: all 0.3s ease;
+}
+
+.main-section:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--box-shadow-lg);
+}
+
+.main-section h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: var(--navy);
+}
+
+/* Prescription Table */
+.prescription-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.prescription-table th,
+.prescription-table td {
+  text-align: left;
+  padding: 0.6rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.prescription-table tr:hover {
+  background-color: rgba(0,179,164,0.05);
+}
+
+/* Inventory Alerts */
+.inventory-alert {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 0.6rem;
+  background: rgba(255,82,82,0.08);
+  color: var(--accent);
+  font-weight: 600;
+  border-left: 4px solid var(--accent);
+  transition: all 0.3s ease;
+}
+
+.inventory-alert:hover {
+  background: rgba(255,82,82,0.15);
+}
+
+@media (max-width: 768px) {
+  .main-sections {
+    grid-template-columns: 1fr;
+  }
+  .stats-cards {
+    flex-direction: column;
+  }
+}

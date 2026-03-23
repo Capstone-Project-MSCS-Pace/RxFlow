@@ -2,6 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.js";
 import { ROUTES } from "../../config/routes.js";
+import "./DashboardPage.css";
 
 const DashboardPage = () => {
   const navigate = useNavigate();
@@ -12,58 +13,41 @@ const DashboardPage = () => {
     navigate(ROUTES.LOGIN);
   };
 
+  const stats = ["New Prescriptions", "In Process", "Ready", "Low Stock"];
+
   return (
-    <div style={{ padding: "2rem" }}>
-      <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
-        <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <button type="button" onClick={handleLogout}>
-            Logout
-          </button>
+    <div className="dashboard-container">
+      {/* Top Bar */}
+      <div className="dashboard-topbar">
+        <h2>RxFlow Dashboard</h2>
+        <div>
+          <span style={{ marginRight: "1rem" }}>Welcome, {user?.fullname}</span>
+          <button onClick={handleLogout}>Logout</button>
         </div>
-        <h1>Welcome, {user?.fullname}! 👋</h1>
+      </div>
 
-        <div
-          style={{
-            background: "#f8f9fa",
-            padding: "2rem",
-            borderRadius: "8px",
-            marginTop: "2rem",
-          }}
-        >
-          <h2>User Profile</h2>
-          <div style={{ marginTop: "1rem" }}>
-            <p>
-              <strong>Full Name:</strong> {user?.fullname}
-            </p>
-            <p>
-              <strong>Email:</strong> {user?.email}
-            </p>
-            <p>
-              <strong>Role:</strong> {user?.role}
-            </p>
-            <p>
-              <strong>Account Status: </strong>
-              {user?.isactive ? "Active" : "Inactive"}
-            </p>
+      {/* Stats Cards */}
+      <div className="stats-cards">
+        {stats.map((item, index) => (
+          <div className="stats-card" key={index}>
+            <h3>{item}</h3>
+            <p>0</p>
           </div>
+        ))}
+      </div>
+
+      {/* Main Sections */}
+      <div className="main-sections">
+        {/* Prescription Queue */}
+        <div className="main-section">
+          <h3>Prescription Queue</h3>
+          <p>Queue data will appear here...</p>
         </div>
 
-        <div
-          style={{
-            background: "#e3f2fd",
-            padding: "2rem",
-            borderRadius: "8px",
-            marginTop: "2rem",
-          }}
-        >
-          <h2>Dashboard Modules</h2>
-          <p>User dashboard and analytics coming soon...</p>
-          <ul style={{ marginTop: "1rem" }}>
-            <li>Inventory Management</li>
-            <li>Order Processing</li>
-            <li>Analytics &amp; Reports</li>
-            <li>User Management</li>
-          </ul>
+        {/* Inventory Alerts */}
+        <div className="main-section">
+          <h3>Inventory Alerts</h3>
+          <p>No alerts right now</p>
         </div>
       </div>
     </div>
