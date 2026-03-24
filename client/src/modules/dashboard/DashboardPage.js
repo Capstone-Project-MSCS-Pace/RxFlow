@@ -1,6 +1,6 @@
 import React from "react";
 import AppSidebar from "../../components/AppSidebar.js";
-import ProfileDropdown from "../../components/ProfileDropdown.js";
+import AppHeader from "../../components/AppHeader.js";
 import "./DashboardPage.css";
 
 const DashboardPage = () => {
@@ -12,14 +12,7 @@ const DashboardPage = () => {
 
       {/* Main Content */}
       <div className="main-content">
-
-        {/* Header with Profile Avatar */}
-        <header className="header">
-          <h2>Dashboard</h2>
-          <div className="header-right">
-            <ProfileDropdown />
-          </div>
-        </header>
+        <AppHeader title="Dashboard" />
 
         {/* Page Content */}
         <div className="content">

@@ -1,6 +1,6 @@
 import React from "react";
 import AppSidebar from "../../components/AppSidebar.js";
-import ProfileDropdown from "../../components/ProfileDropdown.js";
+import AppHeader from "../../components/AppHeader.js";
 import "../dashboard/DashboardPage.css";
 
 const InventoryPage = () => {
@@ -9,12 +9,7 @@ const InventoryPage = () => {
       <AppSidebar />
 
       <div className="main-content">
-        <header className="header">
-          <h2>Inventory</h2>
-          <div className="header-right">
-            <ProfileDropdown />
-          </div>
-        </header>
+        <AppHeader title="Inventory" />
 
         <div className="content">
           <div className="card">

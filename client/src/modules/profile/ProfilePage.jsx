@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useAuth } from "../../context/AuthContext.js";
 import AppSidebar from "../../components/AppSidebar.js";
-import ProfileDropdown from "../../components/ProfileDropdown.js";
+import AppHeader from "../../components/AppHeader.js";
 import "./ProfilePage.css";
 
 const ProfilePage = () => {
@@ -76,13 +76,7 @@ const ProfilePage = () => {
 
             {/* Main Content */}
             <div className="main-content">
-                {/* Header with Profile Dropdown */}
-                <header className="header">
-                    <h2>Profile</h2>
-                    <div className="header-right">
-                        <ProfileDropdown />
-                    </div>
-                </header>
+                <AppHeader title="Profile" />
 
                 {/* Page Content */}
                 <div className="content">
