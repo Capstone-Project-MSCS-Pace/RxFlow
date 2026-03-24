@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.js";
 import { ROUTES } from "../../config/routes.js";
+import AppSidebar from "../../components/AppSidebar.js";
 import "./ProfilePage.css";
 
 const ProfilePage = () => {
@@ -73,17 +74,7 @@ const ProfilePage = () => {
 
     return (
         <div className="dashboard-layout">
-
-            {/* Sidebar */}
-            <aside className="sidebar">
-                <h2 className="logo">RxFlow</h2>
-                <nav>
-                    <button onClick={() => navigate(ROUTES.DASHBOARD)}>Dashboard</button>
-                    <button className="active" onClick={() => navigate(ROUTES.PROFILE)}>Profile</button>
-                    <button onClick={() => navigate(ROUTES.PRESCRIPTIONS)}>Prescriptions</button>
-                    <button onClick={() => navigate(ROUTES.INVENTORY)}>Inventory</button>
-                </nav>
-            </aside>
+            <AppSidebar />
 
             {/* Main Content */}
             <div className="main-content">

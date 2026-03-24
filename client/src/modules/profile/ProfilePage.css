@@ -14,41 +14,6 @@ body, input, button {
   background-color: #f5f6fa;
 }
 
-/* Sidebar */
-.sidebar {
-  width: 220px;
-  background-color: #0B1F3B;
-  color: #fff;
-  display: flex;
-  flex-direction: column;
-  padding: 2rem 1rem;
-}
-
-.sidebar .logo {
-  font-size: 1.25rem;
-  font-weight: bold;
-  margin-bottom: 2rem;
-}
-
-.sidebar nav button {
-  background: none;
-  border: none;
-  color: #fff;
-  text-align: left;
-  padding: 0.65rem 1rem;
-  width: 100%;
-  font-size: 0.875rem;
-  margin-bottom: 0.5rem;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.sidebar nav button:hover,
-.sidebar nav button.active {
-  background-color: #1a3a5c;
-}
-
 /* Main content */
 .main-content {
   flex: 1;

@@ -6,6 +6,8 @@ export const ROUTES = {
   DASHBOARD: "/dashboard",
   RESET_PASSWORD: "/reset-password",
   PROFILE: "/profile",
+  PRESCRIPTIONS: "/prescriptions",
+  INVENTORY: "/inventory",
 };
 
 const readEnv = (key) =>

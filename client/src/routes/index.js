@@ -5,6 +5,8 @@ import SignupPage from "../modules/auth/SignupPage";
 import DashboardPage from "../modules/dashboard/DashboardPage";
 import ResetPasswordPage from "../modules/auth/ResetPasswordPage";
 import ProfilePage from "../modules/profile/ProfilePage";
+import PrescriptionsPage from "../modules/prescriptions/PrescriptionsPage";
+import InventoryPage from "../modules/inventory/InventoryPage";
 import ProtectedRoute from "../components/ProtectedRoute.js";
 import { AuthProvider } from "../context/AuthContext.js";
 import { ROUTES } from "../config/routes.js";
@@ -18,12 +20,35 @@ const AppRoutes = () => {
           <Route path={ROUTES.LOGIN} element={<LoginPage />} />
           <Route path={ROUTES.SIGNUP} element={<SignupPage />} />
           <Route path={ROUTES.RESET_PASSWORD} element={<ResetPasswordPage />} />
-          <Route path={ROUTES.PROFILE} element={<ProfilePage />} />
+          <Route
+            path={ROUTES.PROFILE}
+            element={
+              <ProtectedRoute>
+                <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path={ROUTES.DASHBOARD}
             element={
               <ProtectedRoute>
                 <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={ROUTES.PRESCRIPTIONS}
+            element={
+              <ProtectedRoute>
+                <PrescriptionsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={ROUTES.INVENTORY}
+            element={
+              <ProtectedRoute>
+                <InventoryPage />
               </ProtectedRoute>
             }
           />

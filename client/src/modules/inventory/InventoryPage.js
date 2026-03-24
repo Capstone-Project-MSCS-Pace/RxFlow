@@ -1,72 +1,48 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import AppSidebar from "../../components/AppSidebar.js";
 import { useAuth } from "../../context/AuthContext.js";
 import { ROUTES } from "../../config/routes.js";
-import AppSidebar from "../../components/AppSidebar.js";
-import "./DashboardPage.css";
+import "../dashboard/DashboardPage.css";
 
-const DashboardPage = () => {
+const InventoryPage = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-
-  const stats = ["New Prescriptions", "In Process", "Ready", "Low Stock"];
 
   return (
     <div className="dashboard-layout">
       <AppSidebar />
 
-      {/* Main Content */}
       <div className="main-content">
-
-        {/* Header with Profile Avatar */}
         <header className="header">
-          <h2>Dashboard</h2>
+          <h2>Inventory</h2>
           <div className="header-right">
             <ProfileDropdown user={user} logout={logout} navigate={navigate} />
           </div>
         </header>
 
-        {/* Page Content */}
         <div className="content">
-
-          {/* Stats Cards */}
-          <div className="stats-grid">
-            {stats.map((item, index) => (
-              <div className="card stat-card" key={index}>
-                <h4>{item}</h4>
-                <p>0</p>
-              </div>
-            ))}
+          <div className="card">
+            <h3>Inventory Workspace</h3>
+            <p>Stock visibility, replenishment flows, and low-stock alerts will live here.</p>
           </div>
-
-          {/* Lower Grid */}
-          <div className="grid-2">
-            <div className="card">
-              <h3>Prescription Queue</h3>
-              <p>Queue data will appear here...</p>
-            </div>
-
-            <div className="card">
-              <h3>Inventory Alerts</h3>
-              <p>No alerts right now</p>
-            </div>
-          </div>
-
         </div>
       </div>
     </div>
   );
 };
 
-// Profile Dropdown Component
 const ProfileDropdown = ({ user, logout, navigate }) => {
   const [open, setOpen] = React.useState(false);
   const dropdownRef = React.useRef();
 
   React.useEffect(() => {
     const handleClickOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setOpen(false);
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setOpen(false);
+      }
     };
+
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
@@ -89,4 +65,4 @@ const ProfileDropdown = ({ user, logout, navigate }) => {
   );
 };
 
-export default DashboardPage;
+export default InventoryPage;
