@@ -2,6 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.js";
 import { ROUTES } from "../config/routes.js";
+import Avatar from "./Avatar.js";
 
 const ProfileDropdown = () => {
   const navigate = useNavigate();
@@ -33,12 +34,11 @@ const ProfileDropdown = () => {
 
   return (
     <div className="profile-wrapper" ref={dropdownRef}>
-      <div
+      <Avatar
+        name={user?.fullname}
         className="profile-mini"
         onClick={() => setOpen((currentOpen) => !currentOpen)}
-      >
-        {user?.fullname?.charAt(0)}
-      </div>
+      />
       {open && (
         <div className="dropdown">
           <p className="dropdown-name">{user?.fullname}</p>

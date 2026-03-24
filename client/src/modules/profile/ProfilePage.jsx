@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useAuth } from "../../context/AuthContext.js";
 import AppShell from "../../components/AppShell.js";
+import Avatar from "../../components/Avatar.js";
 import Card from "../../components/Card.js";
 import "./ProfilePage.css";
 
@@ -76,7 +77,7 @@ const ProfilePage = () => {
 
                 {/* Profile Card */}
                 <Card className="profile-card">
-                    <div className="avatar">{user?.fullname?.charAt(0)}</div>
+                    <Avatar name={user?.fullname} />
                     <h3>{user?.fullname}</h3>
                     <p>{user?.email}</p>
                     <span className="role-badge">{user?.role || "Technician"}</span>
