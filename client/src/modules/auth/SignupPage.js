@@ -3,6 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import "./SignupPage.css";
 import { useAuth } from "../../context/AuthContext.js";
 import { ROUTES } from "../../config/routes.js";
+import AuthLayout from "../../components/AuthLayout.js";
+import AuthFormShell from "../../components/AuthFormShell.js";
 
 const SignupPage = () => {
   const navigate = useNavigate();
@@ -61,20 +63,21 @@ const SignupPage = () => {
   };
 
   return (
-    <div className="auth-page">
-      <div className="auth-container">
-        <div className="auth-card">
-          <div className="auth-header">
-            <Link to={ROUTES.HOME} className="auth-logo">
-              RxFlow
+    <AuthLayout>
+      <AuthFormShell
+        title="Create Account"
+        subtitle="Join RxFlow to streamline your pharmacy workflow"
+        error={error}
+        footer={
+          <p>
+            Already have an account?{" "}
+            <Link to={ROUTES.LOGIN} className="auth-switch-link">
+              Sign in
             </Link>
-            <h1>Create Account</h1>
-            <p>Join RxFlow to streamline your pharmacy workflow</p>
-          </div>
-
+          </p>
+        }
+      >
           <form className="auth-form" onSubmit={handleSubmit}>
-            {error && <div className="error-message">{error}</div>}
-
             <div className="form-group">
               <label htmlFor="fullname">Full Name</label>
               <input
@@ -153,18 +156,8 @@ const SignupPage = () => {
               {loading ? "Creating Account..." : "Create Account"}
             </button>
           </form>
-
-          <div className="auth-footer">
-            <p>
-              Already have an account?{" "}
-              <Link to={ROUTES.LOGIN} className="auth-switch-link">
-                Sign in
-              </Link>
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
+      </AuthFormShell>
+    </AuthLayout>
   );
 };
 

@@ -3,6 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import "./LoginPage.css";
 import { useAuth } from "../../context/AuthContext.js";
 import { ROUTES } from "../../config/routes.js";
+import AuthLayout from "../../components/AuthLayout.js";
+import AuthFormShell from "../../components/AuthFormShell.js";
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -47,20 +49,21 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="auth-page">
-      <div className="auth-container">
-        <div className="auth-card">
-          <div className="auth-header">
-            <Link to={ROUTES.HOME} className="auth-logo">
-              RxFlow
+    <AuthLayout>
+      <AuthFormShell
+        title="Welcome Back"
+        subtitle="Sign in to your account to continue"
+        error={error}
+        footer={
+          <p>
+            Don't have an account?{" "}
+            <Link to={ROUTES.SIGNUP} className="auth-switch-link">
+              Sign up
             </Link>
-            <h1>Welcome Back</h1>
-            <p>Sign in to your account to continue</p>
-          </div>
-
+          </p>
+        }
+      >
           <form className="auth-form" onSubmit={handleSubmit}>
-            {error && <div className="error-message">{error}</div>}
-
             <div className="form-group">
               <label htmlFor="email">Email Address</label>
               <input
@@ -110,18 +113,8 @@ const LoginPage = () => {
               {loading ? "Signing in..." : "Sign In"}
             </button>
           </form>
-
-          <div className="auth-footer">
-            <p>
-              Don't have an account?{" "}
-              <Link to={ROUTES.SIGNUP} className="auth-switch-link">
-                Sign up
-              </Link>
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
+      </AuthFormShell>
+    </AuthLayout>
   );
 };
 

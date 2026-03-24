@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import "./LoginPage.css";
 import { useAuth } from "../../context/AuthContext.js";
 import { ROUTES } from "../../config/routes.js";
+import AuthLayout from "../../components/AuthLayout.js";
+import AuthFormShell from "../../components/AuthFormShell.js";
 
 const ResetPasswordPage = () => {
   const { resetPassword } = useAuth();
@@ -49,19 +51,22 @@ const ResetPasswordPage = () => {
   };
 
   return (
-    <div className="auth-page">
-      <div className="auth-container">
-        <div className="auth-card">
-          <div className="auth-header">
-            <Link to={ROUTES.HOME} className="auth-logo">
-              RxFlow
+    <AuthLayout>
+      <AuthFormShell
+        title="Reset Password"
+        subtitle="Enter your email and new password"
+        error={isSuccess ? "" : error}
+        footer={
+          <p>
+            Remember your password?{" "}
+            <Link to={ROUTES.LOGIN} className="auth-switch-link">
+              Sign in
             </Link>
-            <h1>Reset Password</h1>
-            <p>Enter your email and new password</p>
-          </div>
-
-          {/* CONDITIONAL UI */}
-          {isSuccess ? (
+          </p>
+        }
+      >
+        {/* CONDITIONAL UI */}
+        {isSuccess ? (
             <div className="auth-form">
               <div className="success-message">
                 Password reset successfully!
@@ -78,8 +83,6 @@ const ResetPasswordPage = () => {
             </div>
           ) : (
             <form className="auth-form" onSubmit={handleSubmit}>
-              {error && <div className="error-message">{error}</div>}
-
               <div className="form-group">
                 <label htmlFor="email">Email Address</label>
                 <input
@@ -117,18 +120,8 @@ const ResetPasswordPage = () => {
               </button>
             </form>
           )}
-
-          <div className="auth-footer">
-            <p>
-              Remember your password?{" "}
-              <Link to={ROUTES.LOGIN} className="auth-switch-link">
-                Sign in
-              </Link>
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
+      </AuthFormShell>
+    </AuthLayout>
   );
 };
 
