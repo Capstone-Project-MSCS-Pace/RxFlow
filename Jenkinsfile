@@ -16,14 +16,13 @@ pipeline {
     CLIENT_IMAGE = "asrivastaava/rxflow-client"
     SERVER_IMAGE = "asrivastaava/rxflow-server"
 
-    DEV_HOST  = "ec2-user@ec2-18-223-171-244.us-east-2.compute.amazonaws.com"
+    DEV_HOST = "ec2-user@ec2-18-223-171-244.us-east-2.compute.amazonaws.com"
     PROD_HOST = "ec2-user@ec2-3-135-219-253.us-east-2.compute.amazonaws.com"
 
     TESTRIGOR_APP_ID = "CX3XSkSha6AeLseJu"
   }
 
   stages {
-
     stage("Checkout") {
       steps {
         deleteDir()
@@ -51,34 +50,32 @@ pipeline {
           } else if (env.BRANCH == "main") {
             env.TAG = "prod-${env.BUILD_NUMBER}-${env.GIT_SHA}"
           }
+
           echo "Image tag: ${env.TAG}"
         }
       }
     }
 
-    stage("Install & Test") {
+    stage("Install & Verify") {
       parallel {
         stage("Client Checks") {
           steps {
             sh """
-              echo set -e
-              echo cd client
-              echo npm ci
-              echo npm run lint
-              echo npm test -- --watch=false
+              set -e
+              cd client
+              npm ci
+              CI=true npm run build
             """
           }
         }
 
-
         stage("Server Checks") {
           steps {
             sh """
-              echo set -e
-              echo cd server
-              echo npm ci
-              echo npm run lint
-              echo npm test
+              set -e
+              cd server
+              npm ci
+              find . -name "*.js" -print0 | xargs -0 -n1 node --check
             """
           }
         }
@@ -90,7 +87,7 @@ pipeline {
         sh """
           set -e
           docker build -t ${CLIENT_IMAGE}:${TAG} \\
-            --build-arg VITE_API_BASE_URL=/api \\
+            --build-arg REACT_APP_API_BASE_URL=/api \\
             -f ./client/Dockerfile ./client
 
           docker build -t ${SERVER_IMAGE}:${TAG} \\
@@ -98,17 +95,6 @@ pipeline {
         """
       }
     }
-
-    // stage("Build Images") {
-    //   steps {
-    //     sh """
-    //       set -e
-    //       docker build -t ${CLIENT_IMAGE}:${TAG} \\
-    //         --build-arg VITE_API_BASE_URL=/api \\
-    //         -f ./client/Dockerfile ./client
-    //     """
-    //   }
-    // }
 
     stage("Push Images") {
       steps {
@@ -122,18 +108,6 @@ pipeline {
         }
       }
     }
-    
-    // stage("Push Images") {
-    //   steps {
-    //     withCredentials([usernamePassword(credentialsId: DOCKER_CREDS, usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-    //       sh """
-    //         set -e
-    //         echo "\$DOCKER_PASS" | docker login -u "\$DOCKER_USER" --password-stdin
-    //         docker push ${CLIENT_IMAGE}:${TAG}
-    //       """
-    //     }
-    //   }
-    // }
 
     stage("Deploy to Dev") {
       when {
@@ -159,60 +133,60 @@ pipeline {
         branch 'dev'
       }
       steps {
-        sh '''#!/bin/bash
-          set -e
+        withCredentials([string(credentialsId: TESTRIGOR_TOKEN_CRED, variable: 'TESTRIGOR_TOKEN')]) {
+          sh '''#!/bin/bash
+            set -e
 
-          curl -X POST \
-            -H 'Content-type: application/json' \
-            -H 'auth-token: 7db63e5a-1e3d-4653-b6b2-05703ba8c730' \
-            --data '{"forceCancelPreviousTesting":true,"storedValues":{"storedValueName1":"Value"}}' \
-            https://api.testrigor.com/api/v1/apps/CX3XSkSha6AeLseJu/retest
+            curl -X POST \
+              -H 'Content-type: application/json' \
+              -H "auth-token: ${TESTRIGOR_TOKEN}" \
+              --data '{"forceCancelPreviousTesting":true,"storedValues":{"storedValueName1":"Value"}}' \
+              "https://api.testrigor.com/api/v1/apps/${TESTRIGOR_APP_ID}/retest"
 
-          sleep 10
-
-          while true
-          do
-            echo " "
-            echo "==================================="
-            echo " Checking run status"
-            echo "==================================="
-            response=$(curl -i -o - -s -X GET 'https://api.testrigor.com/api/v1/apps/CX3XSkSha6AeLseJu/status' -H 'auth-token: 7db63e5a-1e3d-4653-b6b2-05703ba8c730' -H 'Accept: application/json')
-            code=$(echo "$response" | grep HTTP |  awk '{print $2}')
-            body=$(echo "$response" | sed -n '/{/,/}/p')
-            echo "Status code: " $code
-            echo "Response: " $body
-            case $code in
-              4*|5*)
-                # 400 or 500 errors
-                echo "Error calling API"
-                exit 1
-                ;;
-              200)
-                # 200: successfully finished
-                echo "Test finished successfully"
-                exit 0
-                ;;
-              227|228)
-                # 227: New - 228: In progress
-                echo "Test is not finished yet"
-                ;;
-              229)
-                # 229: Canceled
-                echo "Test canceled"
-                exit 1
-                ;;
-              230)
-                # 230: Failed
-                echo "Test finished but failed"
-                exit 1
-                ;;
-              *)
-                echo "Unknown status"
-                exit 1
-              esac
             sleep 10
-          done
-      '''
+
+            while true
+            do
+              echo " "
+              echo "==================================="
+              echo " Checking run status"
+              echo "==================================="
+              response=$(curl -i -o - -s -X GET "https://api.testrigor.com/api/v1/apps/${TESTRIGOR_APP_ID}/status" -H "auth-token: ${TESTRIGOR_TOKEN}" -H 'Accept: application/json')
+              code=$(echo "$response" | grep HTTP | awk '{print $2}')
+              body=$(echo "$response" | sed -n '/{/,/}/p')
+              echo "Status code: $code"
+              echo "Response: $body"
+
+              case $code in
+                4*|5*)
+                  echo "Error calling API"
+                  exit 1
+                  ;;
+                200)
+                  echo "Test finished successfully"
+                  exit 0
+                  ;;
+                227|228)
+                  echo "Test is not finished yet"
+                  ;;
+                229)
+                  echo "Test canceled"
+                  exit 1
+                  ;;
+                230)
+                  echo "Test finished but failed"
+                  exit 1
+                  ;;
+                *)
+                  echo "Unknown status"
+                  exit 1
+                  ;;
+              esac
+
+              sleep 10
+            done
+          '''
+        }
       }
     }
 
@@ -237,6 +211,7 @@ pipeline {
           sh """
             set -e
             ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=60 ${PROD_HOST} '
+              cd /opt/rxflow &&
               export RXFLOW_TAG=${TAG} &&
               docker compose pull &&
               docker compose up -d
@@ -290,17 +265,16 @@ pipeline {
   post {
     success {
       echo "RxFlow pipeline completed successfully."
-      slackSend(color: "good", message: "✅ *RxFlow Build Success!* \nJob: ${env.JOB_NAME} \nBuild: #${env.BUILD_NUMBER} \nURL: ${env.BUILD_URL}")
+      slackSend(color: "good", message: "Build succeeded: ${env.JOB_NAME} #${env.BUILD_NUMBER} ${env.BUILD_URL}")
     }
 
     failure {
       echo "RxFlow pipeline failed."
-      slackSend(color: "danger", message: "❌ *RxFlow Build Failed!* \nJob: ${env.JOB_NAME} \nBuild: #${env.BUILD_NUMBER} \nURL: ${env.BUILD_URL}")
+      slackSend(color: "danger", message: "Build failed: ${env.JOB_NAME} #${env.BUILD_NUMBER} ${env.BUILD_URL}")
     }
 
     always {
       sh "docker logout || true"
-      
     }
   }
 }
