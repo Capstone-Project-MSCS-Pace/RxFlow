@@ -265,6 +265,58 @@ class ApiService {
       },
     );
   }
+
+  async searchPatients({ q = "", page = 1, limit = 10 } = {}) {
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(limit),
+    });
+
+    if (q.trim()) {
+      params.set("q", q.trim());
+    }
+
+    return await this.request(
+      `${API_ENDPOINTS.PATIENTS.LIST}?${params.toString()}`,
+      {
+        method: "GET",
+      },
+    );
+  }
+
+  async getPatient(id) {
+    return await this.request(API_ENDPOINTS.PATIENTS.DETAIL(id), {
+      method: "GET",
+    });
+  }
+
+  async createPatient(data) {
+    return await this.request(API_ENDPOINTS.PATIENTS.LIST, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updatePatient(id, data) {
+    return await this.request(API_ENDPOINTS.PATIENTS.DETAIL(id), {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getPatientAudits(patientId, { page = 1, limit = 10 } = {}) {
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(limit),
+    });
+
+    return await this.request(
+      `${API_ENDPOINTS.PATIENTS.AUDITS(patientId)}?${params.toString()}`,
+      {
+        method: "GET",
+      },
+    );
+  }
   
   getToken() {
     return localStorage.getItem("token");

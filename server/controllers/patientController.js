@@ -8,6 +8,27 @@ const toLimit = (value, fallback = 25, max = 100) =>
 const toOffset = (page = 1, limit = 25) =>
   (Math.max(Number(page), 1) - 1) * limit;
 
+const PATIENT_NUMBER_PREFIX = "PT";
+
+const generatePatientNumber = async () => {
+  const latestPatient = await Patient.findOne({
+    where: {
+      patientNumber: {
+        [Op.iLike]: `${PATIENT_NUMBER_PREFIX}%`,
+      },
+    },
+    order: [["createdat", "DESC"]],
+  });
+
+  const latestNumber = latestPatient?.patientNumber || "";
+  const numericPortion = Number(
+    String(latestNumber).replace(new RegExp(`^${PATIENT_NUMBER_PREFIX}`, "i"), ""),
+  );
+  const nextNumber = Number.isFinite(numericPortion) ? numericPortion + 1 : 1;
+
+  return `${PATIENT_NUMBER_PREFIX}${String(nextNumber).padStart(6, "0")}`;
+};
+
 /**
  * Log audit entry for field change
  */
@@ -126,7 +147,6 @@ export const createPatient = async (req, res) => {
       city,
       state,
       zipCode,
-      patientNumber,
       mrn,
       notes,
     } = req.body;
@@ -139,15 +159,16 @@ export const createPatient = async (req, res) => {
       !city ||
       !state ||
       !zipCode ||
-      !patientNumber ||
       !dateOfBirth
     ) {
       return res.status(400).json({
         success: false,
         message:
-          "Missing required fields: firstName, lastName, dateOfBirth, phonePrimary, addressLine1, city, state, zipCode, patientNumber.",
+          "Missing required fields: firstName, lastName, dateOfBirth, phonePrimary, addressLine1, city, state, zipCode.",
       });
     }
+
+    const patientNumber = await generatePatientNumber();
 
     const patient = await Patient.create({
       firstName,
@@ -218,7 +239,9 @@ export const createPatient = async (req, res) => {
 export const updatePatient = async (req, res) => {
   try {
     const { id } = req.params;
-    const updates = req.body;
+    const updates = { ...req.body };
+
+    delete updates.patientNumber;
 
     const patient = await Patient.findByPk(id);
 

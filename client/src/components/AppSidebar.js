@@ -7,6 +7,7 @@ import logo from "../assets/logo.png";
 const NAV_ITEMS = [
   { label: "Dashboard", to: ROUTES.DASHBOARD },
   { label: "Profile", to: ROUTES.PROFILE },
+  { label: "Patients", to: ROUTES.PATIENTS },
   { label: "Prescriptions", to: ROUTES.PRESCRIPTIONS },
   { label: "Inventory", to: ROUTES.INVENTORY },
 ];

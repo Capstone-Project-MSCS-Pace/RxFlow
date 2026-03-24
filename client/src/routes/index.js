@@ -5,6 +5,7 @@ import SignupPage from "../modules/auth/SignupPage";
 import DashboardPage from "../modules/dashboard/DashboardPage";
 import ResetPasswordPage from "../modules/auth/ResetPasswordPage";
 import ProfilePage from "../modules/profile/ProfilePage";
+import PatientsPage from "../modules/patients/PatientsPage";
 import PrescriptionsPage from "../modules/prescriptions/PrescriptionsPage";
 import InventoryPage from "../modules/inventory/InventoryPage";
 import ProtectedRoute from "../components/ProtectedRoute.js";
@@ -25,6 +26,14 @@ const AppRoutes = () => {
             element={
               <ProtectedRoute>
                 <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={ROUTES.PATIENTS}
+            element={
+              <ProtectedRoute>
+                <PatientsPage />
               </ProtectedRoute>
             }
           />
