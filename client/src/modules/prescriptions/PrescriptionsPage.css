@@ -1,0 +1,106 @@
+.prescription-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.prescription-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.95fr) minmax(0, 1.35fr);
+  gap: 1.5rem;
+}
+
+.prescription-toolbar,
+.prescription-section-header,
+.prescription-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.prescription-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.prescription-tabs button {
+  border: none;
+  background: #eef2f7;
+  padding: 0.5rem 0.9rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.prescription-tabs button.active {
+  background: var(--teal);
+  color: white;
+}
+
+.prescription-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.prescription-list-item {
+  padding: 1rem;
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  background: #f9fbfd;
+  cursor: pointer;
+}
+
+.prescription-list-item.active {
+  border-color: var(--teal);
+  background: #f4fffd;
+}
+
+.prescription-status {
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.prescription-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.prescription-detail-grid span {
+  display: block;
+  margin-bottom: 0.35rem; 
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+.prescription-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.prescription-form input,
+.prescription-form textarea {
+  padding: 0.7rem;
+  border-radius: 10px;
+  border: 1px solid var(--border-light);
+}
+
+.prescription-primary-btn {
+  background: linear-gradient(135deg, var(--teal), var(--accent));
+  color: white;
+  border: none;
+  padding: 0.7rem;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.prescription-danger-btn {
+  background: #fee4e2;
+  color: #b42318;
+  border: none;
+  padding: 0.7rem;
+  border-radius: 10px;
+}
