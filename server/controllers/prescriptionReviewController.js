@@ -186,10 +186,18 @@ const performReviewDecision = async (req, res, decision) => {
         status: nextStatus,
         fhirRaw: {
           ...(prescription.fhirRaw || {}),
+          verified_by:
+            decision === "approved"
+              ? tokenRecord.recipientName ||
+                tokenRecord.recipientEmail ||
+                (prescription.fhirRaw || {}).verified_by ||
+                null
+              : (prescription.fhirRaw || {}).verified_by || null,
           prescriberReview: {
             decision,
             reviewedAt: new Date().toISOString(),
             reviewedBy: tokenRecord.recipientEmail,
+            reviewedByName: tokenRecord.recipientName || null,
           },
         },
       },
@@ -267,10 +275,12 @@ export const sendPrescriptionForReview = async (req, res) => {
     }
 
     const summary = resolvePrescriptionSummary(prescription);
+    const prescriber = await getSafePrescriberInfo(prescription);
 
     const invite = await createPrescriptionReviewInvite({
       prescriptionId: prescription.id,
-      prescriberName: summary.prescriberLabel,
+      prescriberName: prescriber?.name || summary.prescriberLabel,
+      prescriberEmail: prescriber?.email,
       prescriptionSummary: {
         medicationDisplay: summary.medicationDisplay,
         quantityValue: summary.quantityValue,
@@ -280,9 +290,13 @@ export const sendPrescriptionForReview = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "Prescription review email queued.",
+      message:
+        invite.deliveryMode === "smtp"
+          ? "Prescription review email queued."
+          : "Prescription review link generated locally. SMTP is not configured, so no email was sent.",
       data: {
         reviewUrl: invite.reviewUrl,
+        deliveryMode: invite.deliveryMode,
         recipientEmail: invite.reviewRecord.recipientEmail,
         recipientName: invite.reviewRecord.recipientName,
       },

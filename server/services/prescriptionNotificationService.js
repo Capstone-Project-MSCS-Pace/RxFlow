@@ -5,6 +5,7 @@ import PrescriptionReviewToken from "../models/PrescriptionReviewToken.js";
 const DEFAULT_PRESCRIBER_EMAIL = "aditya.srivastava@pace.edu";
 const DEFAULT_FRONTEND_BASE_URL = "http://localhost:3000";
 const DEFAULT_TOKEN_TTL_HOURS = 72;
+const DEFAULT_SMTP_FROM = "no-reply@rxlfow.example.com";
 
 const getFrontendBaseUrl = () =>
   (process.env.CLIENT_APP_BASE_URL || DEFAULT_FRONTEND_BASE_URL).replace(
@@ -18,6 +19,24 @@ const getTokenTtlHours = () => {
 };
 
 const hasSmtpConfig = () => Boolean(process.env.SMTP_HOST);
+
+const resolveRecipientEmail = (prescriberEmail) => {
+  const normalizedPrescriberEmail = String(prescriberEmail || "")
+    .trim()
+    .toLowerCase();
+
+  if (normalizedPrescriberEmail) {
+    return normalizedPrescriberEmail;
+  }
+
+  const fallbackEmail = String(
+    process.env.PRESCRIPTION_REVIEW_FALLBACK_EMAIL || DEFAULT_PRESCRIBER_EMAIL,
+  )
+    .trim()
+    .toLowerCase();
+
+  return fallbackEmail;
+};
 
 const createTransporter = () => {
   if (!hasSmtpConfig()) {
@@ -50,17 +69,19 @@ export const buildReviewUrl = (token) => {
 export const createPrescriptionReviewInvite = async ({
   prescriptionId,
   prescriberName,
+  prescriberEmail,
   prescriptionSummary,
 }) => {
   const token = generateReviewToken();
   const tokenHash = hashReviewToken(token);
   const expiresAt = new Date(Date.now() + getTokenTtlHours() * 60 * 60 * 1000);
   const reviewUrl = buildReviewUrl(token);
+  const recipientEmail = resolveRecipientEmail(prescriberEmail);
 
   const reviewToken = await PrescriptionReviewToken.create({
     prescriptionId,
     tokenHash,
-    recipientEmail: DEFAULT_PRESCRIBER_EMAIL,
+    recipientEmail,
     recipientName: prescriberName || "Prescriber",
     reviewUrl,
     sentAt: new Date(),
@@ -107,15 +128,15 @@ export const createPrescriptionReviewInvite = async ({
 
   if (transporter) {
     await transporter.sendMail({
-      from: process.env.SMTP_FROM || "no-reply@rxflow.local",
-      to: DEFAULT_PRESCRIBER_EMAIL,
+      from: process.env.SMTP_FROM || DEFAULT_SMTP_FROM,
+      to: recipientEmail,
       subject,
       text,
       html,
     });
   } else {
     console.log("[Prescription email stub]", {
-      to: DEFAULT_PRESCRIBER_EMAIL,
+      to: recipientEmail,
       subject,
       reviewUrl,
       prescriptionId,
@@ -125,6 +146,7 @@ export const createPrescriptionReviewInvite = async ({
   return {
     reviewToken,
     reviewUrl,
+    deliveryMode: transporter ? "smtp" : "stub",
     reviewRecord: {
       id: reviewToken.id,
       recipientEmail: reviewToken.recipientEmail,

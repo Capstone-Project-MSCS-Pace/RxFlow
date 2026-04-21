@@ -37,6 +37,13 @@
   margin: 0 0 0.9rem;
 }
 
+.prescription-review-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 0.9rem;
+}
+
 .prescription-tabs button {
   border: 1px solid #d6dee8;
   background: #f3f6fa;
@@ -64,6 +71,36 @@
 
 .prescription-tabs button.active {
   background: #d8f4ef;
+  border-color: var(--teal);
+  color: #0c5449;
+}
+
+.prescription-review-filters button {
+  border: 1px solid #d6dee8;
+  background: #fff;
+  color: var(--text-primary);
+  padding: 0.4rem 0.78rem;
+  border-radius: 999px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-weight: 600;
+}
+
+.prescription-review-filters button em {
+  font-style: normal;
+  min-width: 1.35rem;
+  text-align: center;
+  border-radius: 999px;
+  padding: 0.05rem 0.35rem;
+  background: #eef2f7;
+  color: #27405e;
+  font-size: 0.76rem;
+}
+
+.prescription-review-filters button.active {
+  background: #eefaf7;
   border-color: var(--teal);
   color: #0c5449;
 }
@@ -163,6 +200,44 @@
   color: #4a3eb4;
 }
 
+.prescription-status.cancelled {
+  background: #fff1f2;
+  color: #b42318;
+}
+
+.prescription-review-pill {
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+}
+
+.prescription-review-pill.not_sent {
+  background: #edf2f7;
+  color: #364152;
+}
+
+.prescription-review-pill.pending {
+  background: #fff4dc;
+  color: #9a6700;
+}
+
+.prescription-review-pill.approved {
+  background: #e8f8ef;
+  color: #137949;
+}
+
+.prescription-review-pill.rejected {
+  background: #fff1f2;
+  color: #b42318;
+}
+
+.prescription-review-pill.expired,
+.prescription-review-pill.completed {
+  background: #eef2ff;
+  color: #3730a3;
+}
+
 .prescription-detail-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -192,6 +267,62 @@
 .prescription-detail-grid strong {
   font-size: 0.94rem;
   color: #12263d;
+}
+
+.prescription-review-history {
+  margin-top: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fcfefe;
+  padding: 0.9rem;
+}
+
+.prescription-review-history-header {
+  margin-bottom: 0.75rem;
+}
+
+.prescription-review-history-header h4 {
+  margin: 0;
+}
+
+.prescription-review-history-header p {
+  margin: 0.25rem 0 0;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.prescription-review-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.prescription-review-history-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.8rem;
+  background: #fff;
+}
+
+.prescription-review-history-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.prescription-review-history-item p {
+  margin: 0.35rem 0 0.45rem;
+  color: #52606d;
+}
+
+.prescription-review-history-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  color: #52606d;
+  font-size: 0.82rem;
 }
 
 .prescription-form {

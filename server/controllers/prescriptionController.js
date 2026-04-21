@@ -1,6 +1,8 @@
+import { Op } from "sequelize";
 import Patient from "../models/Patient.js";
 import Prescription from "../models/Prescription.js";
 import Prescriber from "../models/Prescriber.js";
+import PrescriptionReviewToken from "../models/PrescriptionReviewToken.js";
 import User from "../models/User.js";
 import {
   generatePrescriptionNumber,
@@ -24,6 +26,110 @@ const STATUS_MAP_REVERSE = {
   ready: "Ready",
   picked_up: "Picked Up",
   cancelled: "Cancelled",
+};
+
+const getReviewLifecycleStatus = (reviewToken) => {
+  if (!reviewToken) {
+    return "not_sent";
+  }
+
+  if (reviewToken.decision === "approved") {
+    return "approved";
+  }
+
+  if (reviewToken.decision === "rejected") {
+    return "rejected";
+  }
+
+  if (reviewToken.usedAt) {
+    return "completed";
+  }
+
+  if (
+    reviewToken.expiresAt &&
+    new Date(reviewToken.expiresAt).getTime() < Date.now()
+  ) {
+    return "expired";
+  }
+
+  return "pending";
+};
+
+const toReviewHistoryEntry = (reviewToken) => ({
+  id: reviewToken.id,
+  recipientEmail: reviewToken.recipientEmail,
+  recipientName: reviewToken.recipientName,
+  reviewUrl: reviewToken.reviewUrl,
+  sentAt: reviewToken.sentAt,
+  expiresAt: reviewToken.expiresAt,
+  usedAt: reviewToken.usedAt,
+  decision: reviewToken.decision,
+  status: getReviewLifecycleStatus(reviewToken),
+});
+
+const attachReviewHistory = async (prescriptions) => {
+  if (!Array.isArray(prescriptions) || !prescriptions.length) {
+    return prescriptions;
+  }
+
+  const prescriptionIds = prescriptions
+    .map((item) => item?.id)
+    .filter(Boolean);
+
+  if (!prescriptionIds.length) {
+    return prescriptions;
+  }
+
+  const reviewTokens = await PrescriptionReviewToken.findAll({
+    where: {
+      prescriptionId: {
+        [Op.in]: prescriptionIds,
+      },
+    },
+    order: [
+      ["sentAt", "DESC"],
+      ["createdat", "DESC"],
+    ],
+  });
+
+  const reviewMap = new Map();
+
+  reviewTokens.forEach((token) => {
+    const existing = reviewMap.get(token.prescriptionId) || [];
+    existing.push(token);
+    reviewMap.set(token.prescriptionId, existing);
+  });
+
+  return prescriptions.map((prescription) => {
+    const reviewHistory = (reviewMap.get(prescription.id) || []).map(
+      toReviewHistoryEntry,
+    );
+    const latestReview = reviewHistory[0] || null;
+    const reviewSummary = {
+      hasBeenSent: reviewHistory.length > 0,
+      totalSent: reviewHistory.length,
+      latestStatus: latestReview?.status || "not_sent",
+      latestDecision: latestReview?.decision || null,
+      latestSentAt: latestReview?.sentAt || null,
+      latestReviewedAt: latestReview?.usedAt || null,
+    };
+
+    if (typeof prescription.toJSON === "function") {
+      return {
+        ...prescription.toJSON(),
+        reviewHistory,
+        latestReview,
+        reviewSummary,
+      };
+    }
+
+    return {
+      ...prescription,
+      reviewHistory,
+      latestReview,
+      reviewSummary,
+    };
+  });
 };
 
 const hasClientProvidedPrescriptionId = (payload) => {
@@ -58,7 +164,7 @@ const resolvePrescriberName = async (value) => {
 
   const prescriber = await Prescriber.findOne({
     where: {
-      npi: String(value).trim(),
+      [Op.or]: [{ npi: String(value).trim() }, { email: String(value).trim() }],
     },
   });
 
@@ -143,9 +249,11 @@ export const listPrescriptions = async (req, res) => {
       ],
     });
 
+    const rowsWithReviewHistory = await attachReviewHistory(rows);
+
     return res.status(200).json({
       success: true,
-      data: rows,
+      data: rowsWithReviewHistory,
       pagination: {
         page,
         limit,
@@ -182,9 +290,13 @@ export const getPrescription = async (req, res) => {
       });
     }
 
+    const [prescriptionWithReviewHistory] = await attachReviewHistory([
+      prescription,
+    ]);
+
     return res.status(200).json({
       success: true,
-      data: prescription,
+      data: prescriptionWithReviewHistory,
     });
   } catch (error) {
     return res.status(500).json({

@@ -6,7 +6,21 @@ import api from "../../services/api.js";
 import "./PrescriptionsPage.css";
 import "../dashboard/DashboardPage.css";
 
-const STATUS_TABS = ["New", "In Process", "Ready", "Picked Up"];
+const STATUS_TABS = [
+  "All",
+  "New",
+  "In Process",
+  "Ready",
+  "Picked Up",
+  "Cancelled",
+];
+const REVIEW_FILTERS = [
+  { id: "all", label: "All" },
+  { id: "sent", label: "Sent" },
+  { id: "pending", label: "Pending" },
+  { id: "approved", label: "Approved" },
+  { id: "rejected", label: "Rejected" },
+];
 
 const INITIAL_FORM = {
   patient_id: "",
@@ -38,8 +52,36 @@ const normalizeStatus = (value) => {
     return "Picked Up";
   }
 
+  if (normalized === "cancelled" || normalized === "canceled") {
+    return "Cancelled";
+  }
+
   return "New";
 };
+
+const REVIEW_STATUS_LABELS = {
+  not_sent: "Not Sent",
+  pending: "Pending",
+  approved: "Approved",
+  rejected: "Rejected",
+  expired: "Expired",
+  completed: "Completed",
+};
+
+const normalizeReviewStatus = (value) => {
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase();
+
+  if (REVIEW_STATUS_LABELS[normalized]) {
+    return normalized;
+  }
+
+  return "not_sent";
+};
+
+const formatReviewStatus = (value) =>
+  REVIEW_STATUS_LABELS[normalizeReviewStatus(value)] || "Not Sent";
 
 const toPrescriptionEntry = (item) => {
   const patientName = item?.patient
@@ -59,6 +101,7 @@ const toPrescriptionEntry = (item) => {
 
   return {
     prescription_id: item?.id,
+    prescription_number: item?.prescriptionNumber || "-",
     pharmacy_id: pharmacyId,
     patient_id: item?.patientId,
     patient_name: patientName,
@@ -69,6 +112,16 @@ const toPrescriptionEntry = (item) => {
     entered_by: enteredBy,
     verified_by: verifiedBy,
     created_at: item?.createdat || null,
+    review_history: Array.isArray(item?.reviewHistory) ? item.reviewHistory : [],
+    latest_review: item?.latestReview || null,
+    review_summary: item?.reviewSummary || {
+      hasBeenSent: false,
+      totalSent: 0,
+      latestStatus: "not_sent",
+      latestDecision: null,
+      latestSentAt: null,
+      latestReviewedAt: null,
+    },
   };
 };
 
@@ -81,7 +134,7 @@ const formatDateTime = (value) => {
 };
 
 const PrescriptionsPage = () => {
-  const [statusTab, setStatusTab] = React.useState("New");
+  const [statusTab, setStatusTab] = React.useState("All");
   const [selectedId, setSelectedId] = React.useState("");
   const [activeTab, setActiveTab] = React.useState("details");
   const [prescriptions, setPrescriptions] = React.useState([]);
@@ -96,6 +149,7 @@ const PrescriptionsPage = () => {
   const [formData, setFormData] = React.useState(INITIAL_FORM);
   const [saveLoading, setSaveLoading] = React.useState(false);
   const [reviewLoading, setReviewLoading] = React.useState("");
+  const [reviewFilter, setReviewFilter] = React.useState("all");
   const [saveError, setSaveError] = React.useState("");
   const [saveSuccess, setSaveSuccess] = React.useState("");
 
@@ -177,7 +231,30 @@ const PrescriptionsPage = () => {
     };
   }, [formOpen]);
 
-  const filtered = prescriptions.filter((item) => item.status === statusTab);
+  const matchesReviewFilter = React.useCallback(
+    (item) => {
+      const latestStatus = normalizeReviewStatus(
+        item?.review_summary?.latestStatus,
+      );
+      const hasBeenSent = Boolean(item?.review_summary?.hasBeenSent);
+
+      if (reviewFilter === "all") {
+        return true;
+      }
+
+      if (reviewFilter === "sent") {
+        return hasBeenSent;
+      }
+
+      return latestStatus === reviewFilter;
+    },
+    [reviewFilter],
+  );
+
+  const filtered = prescriptions.filter((item) => {
+    const matchesStatus = statusTab === "All" || item.status === statusTab;
+    return matchesStatus && matchesReviewFilter(item);
+  });
   const selected = prescriptions.find(
     (item) => item.prescription_id === selectedId,
   );
@@ -198,7 +275,31 @@ const PrescriptionsPage = () => {
   }, [filtered, selectedId]);
 
   const getStatusCount = React.useCallback(
-    (status) => prescriptions.filter((item) => item.status === status).length,
+    (status) =>
+      status === "All"
+        ? prescriptions.length
+        : prescriptions.filter((item) => item.status === status).length,
+    [prescriptions],
+  );
+
+  const getReviewCount = React.useCallback(
+    (filterId) =>
+      prescriptions.filter((item) => {
+        const latestStatus = normalizeReviewStatus(
+          item?.review_summary?.latestStatus,
+        );
+        const hasBeenSent = Boolean(item?.review_summary?.hasBeenSent);
+
+        if (filterId === "all") {
+          return true;
+        }
+
+        if (filterId === "sent") {
+          return hasBeenSent;
+        }
+
+        return latestStatus === filterId;
+      }).length,
     [prescriptions],
   );
 
@@ -327,6 +428,19 @@ const PrescriptionsPage = () => {
               ))}
             </div>
 
+            <div className="prescription-review-filters">
+              {REVIEW_FILTERS.map((filter) => (
+                <button
+                  key={filter.id}
+                  className={reviewFilter === filter.id ? "active" : ""}
+                  onClick={() => setReviewFilter(filter.id)}
+                >
+                  <span>{filter.label}</span>
+                  <em>{getReviewCount(filter.id)}</em>
+                </button>
+              ))}
+            </div>
+
             {error ? (
               <div className="prescription-message error">{error}</div>
             ) : null}
@@ -358,6 +472,16 @@ const PrescriptionsPage = () => {
                     <div className="prescription-list-item-meta">
                       <span className="prescription-meta-pill">
                         Qty: {item.quantity ?? "N/A"}
+                      </span>
+                      <span
+                        className={`prescription-review-pill ${normalizeReviewStatus(
+                          item.review_summary?.latestStatus,
+                        )
+                          .toLowerCase()
+                          .replace(/\s+/g, "-")}`}
+                      >
+                        Review:{" "}
+                        {formatReviewStatus(item.review_summary?.latestStatus)}
                       </span>
                       <span
                         className={`prescription-status ${item.status
@@ -401,6 +525,10 @@ const PrescriptionsPage = () => {
               <>
                 <div className="prescription-detail-grid">
                   <div>
+                    <span>Prescription Number</span>
+                    <strong>{selected.prescription_number || "N/A"}</strong>
+                  </div>
+                  <div>
                     <span>Patient</span>
                     <strong>{selected.patient_name}</strong>
                   </div>
@@ -433,9 +561,84 @@ const PrescriptionsPage = () => {
                     <strong>{selected.verified_by || "N/A"}</strong>
                   </div>
                   <div>
+                    <span>Review Status</span>
+                    <strong>
+                      {formatReviewStatus(
+                        selected.review_summary?.latestStatus,
+                      )}
+                    </strong>
+                  </div>
+                  <div>
+                    <span>Review Recipient</span>
+                    <strong>
+                      {selected.latest_review?.recipientName ||
+                        selected.latest_review?.recipientEmail ||
+                        "N/A"}
+                    </strong>
+                  </div>
+                  <div>
+                    <span>Last Sent For Review</span>
+                    <strong>
+                      {formatDateTime(selected.review_summary?.latestSentAt)}
+                    </strong>
+                  </div>
+                  <div>
+                    <span>Last Reviewed At</span>
+                    <strong>
+                      {formatDateTime(selected.review_summary?.latestReviewedAt)}
+                    </strong>
+                  </div>
+                  <div>
                     <span>Created At</span>
                     <strong>{formatDateTime(selected.created_at)}</strong>
                   </div>
+                </div>
+                <div className="prescription-review-history">
+                  <div className="prescription-review-history-header">
+                    <h4>Review History</h4>
+                    <p>
+                      {selected.review_history.length
+                        ? `${selected.review_history.length} review request(s)`
+                        : "No review requests have been sent yet."}
+                    </p>
+                  </div>
+                  {selected.review_history.length ? (
+                    <div className="prescription-review-history-list">
+                      {selected.review_history.map((entry) => (
+                        <div
+                          key={entry.id}
+                          className="prescription-review-history-item"
+                        >
+                          <div className="prescription-review-history-topline">
+                            <strong>
+                              {entry.recipientName ||
+                                entry.recipientEmail ||
+                                "Prescriber"}
+                            </strong>
+                            <span
+                              className={`prescription-review-pill ${normalizeReviewStatus(
+                                entry.status,
+                              )}`}
+                            >
+                              {formatReviewStatus(entry.status)}
+                            </span>
+                          </div>
+                          <p>{entry.recipientEmail || "No recipient email"}</p>
+                          <div className="prescription-review-history-meta">
+                            <span>
+                              Sent: {formatDateTime(entry.sentAt)}
+                            </span>
+                            <span>
+                              Reviewed: {formatDateTime(entry.usedAt)}
+                            </span>
+                            <span>
+                              Expires: {formatDateTime(entry.expiresAt)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
                 {selected.status === "New" ? (
                   <div className="prescription-details-actions">
