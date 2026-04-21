@@ -89,9 +89,13 @@ const PrescriptionsPage = () => {
   const [error, setError] = React.useState("");
 
   const [patients, setPatients] = React.useState([]);
+  const [prescribers, setPrescribers] = React.useState([]);
+  const [prescriberSearch, setPrescriberSearch] = React.useState("");
+  const [prescribersLoading, setPrescribersLoading] = React.useState(false);
   const [formOpen, setFormOpen] = React.useState(false);
   const [formData, setFormData] = React.useState(INITIAL_FORM);
   const [saveLoading, setSaveLoading] = React.useState(false);
+  const [reviewLoading, setReviewLoading] = React.useState("");
   const [saveError, setSaveError] = React.useState("");
   const [saveSuccess, setSaveSuccess] = React.useState("");
 
@@ -124,6 +128,23 @@ const PrescriptionsPage = () => {
     }
   }, []);
 
+  const fetchPrescribers = React.useCallback(async () => {
+    setPrescribersLoading(true);
+
+    try {
+      const response = await api.listPrescribers({
+        page: 1,
+        limit: 200,
+        q: "",
+      });
+      setPrescribers(response?.data || []);
+    } catch {
+      setPrescribers([]);
+    } finally {
+      setPrescribersLoading(false);
+    }
+  }, []);
+
   React.useEffect(() => {
     fetchPrescriptions();
   }, [fetchPrescriptions]);
@@ -131,6 +152,10 @@ const PrescriptionsPage = () => {
   React.useEffect(() => {
     fetchPatients();
   }, [fetchPatients]);
+
+  React.useEffect(() => {
+    fetchPrescribers();
+  }, [fetchPrescribers]);
 
   React.useEffect(() => {
     if (!formOpen) {
@@ -177,6 +202,22 @@ const PrescriptionsPage = () => {
     [prescriptions],
   );
 
+  const filteredPrescribers = React.useMemo(() => {
+    const search = prescriberSearch.trim().toLowerCase();
+    if (!search) {
+      return prescribers;
+    }
+
+    return prescribers.filter((prescriber) => {
+      const name = String(prescriber?.name || "").toLowerCase();
+      const email = String(prescriber?.email || "").toLowerCase();
+      const npi = String(prescriber?.npi || "").toLowerCase();
+      return (
+        name.includes(search) || email.includes(search) || npi.includes(search)
+      );
+    });
+  }, [prescriberSearch, prescribers]);
+
   const handleFormChange = (event) => {
     const { name, value } = event.target;
     setFormData((current) => ({
@@ -187,8 +228,10 @@ const PrescriptionsPage = () => {
 
   const handleOpenForm = () => {
     setFormData(INITIAL_FORM);
+    setPrescriberSearch("");
     setSaveError("");
     setSaveSuccess("");
+    fetchPrescribers();
     setFormOpen(true);
   };
 
@@ -232,6 +275,22 @@ const PrescriptionsPage = () => {
       setSaveError(err.message || "Failed to create prescription.");
     } finally {
       setSaveLoading(false);
+    }
+  };
+
+  const handleSendForReview = async (prescriptionId) => {
+    setReviewLoading(prescriptionId);
+    setSaveError("");
+    setSaveSuccess("");
+
+    try {
+      const response = await api.sendPrescriptionForReview(prescriptionId);
+      setSaveSuccess(response?.message || "Review email sent.");
+      await fetchPrescriptions();
+    } catch (err) {
+      setSaveError(err.message || "Failed to send prescription for review.");
+    } finally {
+      setReviewLoading("");
     }
   };
 
@@ -339,44 +398,62 @@ const PrescriptionsPage = () => {
                 description="Choose an item from the queue to inspect details."
               />
             ) : activeTab === "details" ? (
-              <div className="prescription-detail-grid">
-                <div>
-                  <span>Patient</span>
-                  <strong>{selected.patient_name}</strong>
+              <>
+                <div className="prescription-detail-grid">
+                  <div>
+                    <span>Patient</span>
+                    <strong>{selected.patient_name}</strong>
+                  </div>
+                  <div>
+                    <span>Pharmacy</span>
+                    <strong>{selected.pharmacy_id || "N/A"}</strong>
+                  </div>
+                  <div>
+                    <span>Prescriber</span>
+                    <strong>{selected.prescriber_id || "N/A"}</strong>
+                  </div>
+                  <div>
+                    <span>Status</span>
+                    <strong>{selected.status}</strong>
+                  </div>
+                  <div>
+                    <span>Drug Names</span>
+                    <strong>{selected.drug_name.join(", ") || "N/A"}</strong>
+                  </div>
+                  <div>
+                    <span>Quantity</span>
+                    <strong>{selected.quantity ?? "N/A"}</strong>
+                  </div>
+                  <div>
+                    <span>Entered By</span>
+                    <strong>{selected.entered_by || "N/A"}</strong>
+                  </div>
+                  <div>
+                    <span>Verified By</span>
+                    <strong>{selected.verified_by || "N/A"}</strong>
+                  </div>
+                  <div>
+                    <span>Created At</span>
+                    <strong>{formatDateTime(selected.created_at)}</strong>
+                  </div>
                 </div>
-                <div>
-                  <span>Pharmacy</span>
-                  <strong>{selected.pharmacy_id || "N/A"}</strong>
-                </div>
-                <div>
-                  <span>Prescriber</span>
-                  <strong>{selected.prescriber_id || "N/A"}</strong>
-                </div>
-                <div>
-                  <span>Status</span>
-                  <strong>{selected.status}</strong>
-                </div>
-                <div>
-                  <span>Drug Names</span>
-                  <strong>{selected.drug_name.join(", ") || "N/A"}</strong>
-                </div>
-                <div>
-                  <span>Quantity</span>
-                  <strong>{selected.quantity ?? "N/A"}</strong>
-                </div>
-                <div>
-                  <span>Entered By</span>
-                  <strong>{selected.entered_by || "N/A"}</strong>
-                </div>
-                <div>
-                  <span>Verified By</span>
-                  <strong>{selected.verified_by || "N/A"}</strong>
-                </div>
-                <div>
-                  <span>Created At</span>
-                  <strong>{formatDateTime(selected.created_at)}</strong>
-                </div>
-              </div>
+                {selected.status === "New" ? (
+                  <div className="prescription-details-actions">
+                    <button
+                      type="button"
+                      className="prescription-secondary-btn"
+                      onClick={() =>
+                        handleSendForReview(selected.prescription_id)
+                      }
+                      disabled={reviewLoading === selected.prescription_id}
+                    >
+                      {reviewLoading === selected.prescription_id
+                        ? "Sending..."
+                        : "Send for review"}
+                    </button>
+                  </div>
+                ) : null}
+              </>
             ) : (
               <div className="prescription-detail-grid">
                 <div>
@@ -443,11 +520,30 @@ const PrescriptionsPage = () => {
                 <label>
                   Prescriber
                   <input
+                    value={prescriberSearch}
+                    onChange={(event) =>
+                      setPrescriberSearch(event.target.value)
+                    }
+                    placeholder="Search by name, email, or NPI"
+                  />
+                  <select
                     name="prescriber_id"
                     value={formData.prescriber_id}
                     onChange={handleFormChange}
-                    placeholder="Future integration"
-                  />
+                  >
+                    <option value="">Select prescriber</option>
+                    {filteredPrescribers.map((prescriber) => (
+                      <option key={prescriber.id} value={prescriber.npi}>
+                        {prescriber.name} ({prescriber.npi}) -{" "}
+                        {prescriber.email}
+                      </option>
+                    ))}
+                  </select>
+                  <small>
+                    {prescribersLoading
+                      ? "Loading prescribers..."
+                      : `${filteredPrescribers.length} prescriber option(s)`}
+                  </small>
                 </label>
                 <label>
                   Status

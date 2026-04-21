@@ -7,6 +7,7 @@ import ResetPasswordPage from "../modules/auth/ResetPasswordPage";
 import ProfilePage from "../modules/profile/ProfilePage";
 import PatientsPage from "../modules/patients/PatientsPage";
 import PrescriptionsPage from "../modules/prescriptions/PrescriptionsPage";
+import PrescriberReviewPage from "../modules/prescriptionReview/PrescriberReviewPage";
 import InventoryPage from "../modules/inventory/InventoryPage";
 import PrescriberPage from "../modules/prescriber/PrescriberPage";
 import ProtectedRoute from "../components/ProtectedRoute.js";
@@ -55,6 +56,10 @@ const AppRoutes = () => {
                 <PrescriptionsPage />
               </ProtectedRoute>
             }
+          />
+          <Route
+            path={ROUTES.PRESCRIPTION_REVIEW}
+            element={<PrescriberReviewPage />}
           />
           <Route
             path={ROUTES.PRESCRIBER}

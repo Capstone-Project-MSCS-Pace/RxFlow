@@ -1,10 +1,12 @@
 import Patient from "../models/Patient.js";
 import Prescription from "../models/Prescription.js";
+import Prescriber from "../models/Prescriber.js";
 import User from "../models/User.js";
 import {
   generatePrescriptionNumber,
   syncMedicationRequestsFromFhir,
 } from "../services/fhirPrescriptionService.js";
+import { createPrescriptionReviewInvite } from "../services/prescriptionNotificationService.js";
 
 const toLimit = (value, fallback = 25, max = 100) =>
   Math.min(Math.max(Number(value) || fallback, 1), max);
@@ -47,6 +49,41 @@ const hasClientProvidedCreatedDate = (payload) => {
     payload.created_at != null &&
     String(payload.created_at).trim() !== ""
   );
+};
+
+const resolvePrescriberName = async (value) => {
+  if (!value) {
+    return "Prescriber";
+  }
+
+  const prescriber = await Prescriber.findOne({
+    where: {
+      npi: String(value).trim(),
+    },
+  });
+
+  return prescriber?.name || String(value).trim() || "Prescriber";
+};
+
+const sendReviewInviteForPrescription = async ({
+  prescription,
+  prescriberName,
+  patientName,
+}) => {
+  try {
+    return await createPrescriptionReviewInvite({
+      prescriptionId: prescription.id,
+      prescriberName,
+      prescriptionSummary: {
+        medicationDisplay: prescription.medicationDisplay,
+        quantityValue: prescription.quantityValue,
+        patientName,
+      },
+    });
+  } catch (error) {
+    console.error("Failed to create/send prescription review invite:", error);
+    return null;
+  }
 };
 
 const toPrescriptionEntryResponse = (prescription, enteredByName = null) => {
@@ -249,6 +286,16 @@ export const createPrescriptionManual = async (req, res) => {
       ],
     });
 
+    const patientName = withPatient?.patient
+      ? `${withPatient.patient.firstName || ""} ${withPatient.patient.lastName || ""}`.trim()
+      : null;
+
+    await sendReviewInviteForPrescription({
+      prescription: withPatient || prescription,
+      prescriberName: prescriberDisplay || "Prescriber",
+      patientName,
+    });
+
     return res.status(201).json({
       success: true,
       message: "Prescription created and placed in the New queue.",
@@ -407,6 +454,20 @@ export const approvePrescriptionEtIn = async (req, res) => {
           required: false,
         },
       ],
+    });
+
+    const patientName = withPatient?.patient
+      ? `${withPatient.patient.firstName || ""} ${withPatient.patient.lastName || ""}`.trim()
+      : null;
+
+    const resolvedPrescriberName = await resolvePrescriberName(
+      prescription.fhirRaw?.prescriber_id || null,
+    );
+
+    await sendReviewInviteForPrescription({
+      prescription: withPatient || prescription,
+      prescriberName: resolvedPrescriberName,
+      patientName,
     });
 
     return res.status(200).json({

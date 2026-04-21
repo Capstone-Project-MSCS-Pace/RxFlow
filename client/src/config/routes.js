@@ -9,6 +9,7 @@ export const ROUTES = {
   ADMIN_USERS: "/admin/users",
   PATIENTS: "/patients",
   PRESCRIPTIONS: "/prescriptions",
+  PRESCRIPTION_REVIEW: "/prescription-review",
   INVENTORY: "/inventory",
   PRESCRIBER: "/prescriber",
 };
@@ -126,6 +127,16 @@ export const API_ENDPOINTS = {
     DETAIL: (id) => normalizePath(`/prescriptions/${id}`),
     APPROVE_ET_IN: (id) => normalizePath(`/prescriptions/${id}/approve-et-in`),
     INSURANCE: (id) => normalizePath(`/prescriptions/${id}/insurance`),
+    SEND_FOR_REVIEW: (id) =>
+      normalizePath(`/prescriptions/${id}/send-for-review`),
+    REVIEW: (token) => normalizePath(`/prescriptions/review/${token}`),
+    REVIEW_APPROVE: (token) =>
+      normalizePath(`/prescriptions/review/${token}/approve`),
+    REVIEW_REJECT: (token) =>
+      normalizePath(`/prescriptions/review/${token}/reject`),
+  },
+  PRESCRIBERS: {
+    LIST: normalizePath("/prescribers"),
   },
   INVENTORY: {
     LOTS: normalizePath("/inventory/lots"),

@@ -161,6 +161,47 @@ const endpointMetadata = {
     description:
       "Validates the active token and returns a logout confirmation.",
   },
+  "GET /api/prescribers": {
+    name: "List Prescribers",
+    description:
+      "Returns paginated prescribers and supports optional search by name, contact, email, or NPI.",
+    authRequired: true,
+  },
+  "POST /api/prescribers": {
+    name: "Create Prescriber",
+    description:
+      "Creates a prescriber record with name, contact, email, and 10-digit NPI.",
+    authRequired: true,
+    requestBody: {
+      label: "Prescriber payload",
+      fields: [
+        {
+          name: "name",
+          type: "string",
+          required: true,
+          example: "Dr. John Smith",
+        },
+        {
+          name: "contact",
+          type: "string",
+          required: true,
+          example: "+1 (555) 123-4567",
+        },
+        {
+          name: "email",
+          type: "string",
+          required: true,
+          example: "john.smith@clinic.com",
+        },
+        {
+          name: "npi",
+          type: "string",
+          required: true,
+          example: "1234567890",
+        },
+      ],
+    },
+  },
   "GET /api/drugs": {
     name: "List Drugs",
     description:
@@ -673,6 +714,30 @@ const endpointMetadata = {
         },
       ],
     },
+  },
+  "GET /api/prescriptions/review/:token": {
+    name: "Get Prescription Review",
+    description:
+      "Returns the safe prescription details needed for the one-time approval page.",
+    authRequired: false,
+  },
+  "POST /api/prescriptions/review/:token/approve": {
+    name: "Approve Prescription Review",
+    description:
+      "Marks the emailed one-time prescription review as approved and consumes the token.",
+    authRequired: false,
+  },
+  "POST /api/prescriptions/review/:token/reject": {
+    name: "Reject Prescription Review",
+    description:
+      "Marks the emailed one-time prescription review as rejected and consumes the token.",
+    authRequired: false,
+  },
+  "POST /api/prescriptions/:id/send-for-review": {
+    name: "Send Prescription for Review",
+    description:
+      "Creates a one-time review link and sends the prescription review email for prescriptions still in New status.",
+    authRequired: true,
   },
   "POST /api/prescriptions/:id/approve-et-in": {
     name: "Approve ET-In (Pharmacist only)",

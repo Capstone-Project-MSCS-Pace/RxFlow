@@ -8,6 +8,7 @@ import {
   patchPrescriptionInsurance,
   syncFhirPrescriptions,
 } from "../controllers/prescriptionController.js";
+import { sendPrescriptionForReview } from "../controllers/prescriptionReviewController.js";
 import {
   authorize,
   authorizePharmacistOnly,
@@ -42,6 +43,13 @@ router.post(
   verifyToken,
   authorize(["user", "pharmacist", "admin"]),
   createPrescriptionEntry,
+);
+
+router.post(
+  "/:id/send-for-review",
+  verifyToken,
+  authorize(["user", "pharmacist", "admin"]),
+  sendPrescriptionForReview,
 );
 
 router.post(

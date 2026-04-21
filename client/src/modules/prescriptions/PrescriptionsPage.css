@@ -185,6 +185,10 @@
   letter-spacing: 0.03em;
 }
 
+.prescription-details-actions {
+  margin-top: 1rem;
+}
+
 .prescription-detail-grid strong {
   font-size: 0.94rem;
   color: #12263d;
@@ -208,6 +212,12 @@
   color: var(--text-primary);
   font-size: 0.88rem;
   font-weight: 600;
+}
+
+.prescription-form label small {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 500;
 }
 
 .prescription-form-span-2 {

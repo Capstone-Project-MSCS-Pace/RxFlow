@@ -453,6 +453,64 @@ class ApiService {
     });
   }
 
+  async sendPrescriptionForReview(id) {
+    return await this.request(API_ENDPOINTS.PRESCRIPTIONS.SEND_FOR_REVIEW(id), {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+  }
+
+  async listPrescribers({ q = "", page = 1, limit = 100 } = {}) {
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(limit),
+    });
+
+    if (String(q).trim()) {
+      params.set("q", String(q).trim());
+    }
+
+    return await this.request(
+      `${API_ENDPOINTS.PRESCRIBERS.LIST}?${params.toString()}`,
+      {
+        method: "GET",
+      },
+    );
+  }
+
+  async createPrescriber(data) {
+    return await this.request(API_ENDPOINTS.PRESCRIBERS.LIST, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getPrescriptionReview(token) {
+    return await this.request(API_ENDPOINTS.PRESCRIPTIONS.REVIEW(token), {
+      method: "GET",
+    });
+  }
+
+  async approvePrescriptionReview(token) {
+    return await this.request(
+      API_ENDPOINTS.PRESCRIPTIONS.REVIEW_APPROVE(token),
+      {
+        method: "POST",
+        body: JSON.stringify({}),
+      },
+    );
+  }
+
+  async rejectPrescriptionReview(token) {
+    return await this.request(
+      API_ENDPOINTS.PRESCRIPTIONS.REVIEW_REJECT(token),
+      {
+        method: "POST",
+        body: JSON.stringify({}),
+      },
+    );
+  }
+
   async listInventoryLots({
     page = 1,
     limit = 50,
