@@ -8,6 +8,10 @@ import {
   generatePrescriptionNumber,
   syncMedicationRequestsFromFhir,
 } from "../services/fhirPrescriptionService.js";
+import {
+  buildActorContext,
+  writeAuditLog,
+} from "../services/auditLogService.js";
 import { createPrescriptionReviewInvite } from "../services/prescriptionNotificationService.js";
 
 const toLimit = (value, fallback = 25, max = 100) =>
@@ -408,6 +412,17 @@ export const createPrescriptionManual = async (req, res) => {
       patientName,
     });
 
+    await writeAuditLog({
+      entityType: "prescription",
+      entityId: prescription.id,
+      action: "created",
+      summary: `Created prescription ${prescription.prescriptionNumber}.`,
+      metadata: (withPatient || prescription).toJSON
+        ? (withPatient || prescription).toJSON()
+        : withPatient || prescription,
+      ...buildActorContext(req),
+    });
+
     return res.status(201).json({
       success: true,
       message: "Prescription created and placed in the New queue.",
@@ -511,6 +526,15 @@ export const createPrescriptionEntry = async (req, res) => {
       etInApprovedByUserId: null,
     });
 
+    await writeAuditLog({
+      entityType: "prescription",
+      entityId: prescription.id,
+      action: "created",
+      summary: `Created prescription ${prescription.prescriptionNumber}.`,
+      metadata: prescription.toJSON(),
+      ...buildActorContext(req),
+    });
+
     return res.status(201).json({
       success: true,
       message: "Prescription entry created successfully.",
@@ -582,6 +606,19 @@ export const approvePrescriptionEtIn = async (req, res) => {
       patientName,
     });
 
+    await writeAuditLog({
+      entityType: "prescription",
+      entityId: prescription.id,
+      action: "approved_et_in",
+      summary: `Recorded ET-In approval for prescription ${prescription.prescriptionNumber}.`,
+      metadata: {
+        prescriptionId: prescription.id,
+        prescriptionNumber: prescription.prescriptionNumber,
+        etInApprovedAt: prescription.etInApprovedAt,
+      },
+      ...buildActorContext(req),
+    });
+
     return res.status(200).json({
       success: true,
       message: "ET-In approval recorded.",
@@ -636,8 +673,21 @@ export const patchPrescriptionInsurance = async (req, res) => {
       });
     }
 
+    const before = prescription.toJSON();
     await prescription.update(updates);
     await prescription.reload();
+
+    await writeAuditLog({
+      entityType: "prescription",
+      entityId: prescription.id,
+      action: "updated_insurance",
+      summary: `Updated insurance details for prescription ${prescription.prescriptionNumber}.`,
+      metadata: {
+        before,
+        after: prescription.toJSON(),
+      },
+      ...buildActorContext(req),
+    });
 
     return res.status(200).json({
       success: true,

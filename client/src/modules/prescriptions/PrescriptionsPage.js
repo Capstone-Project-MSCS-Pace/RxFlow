@@ -319,6 +319,40 @@ const PrescriptionsPage = () => {
     });
   }, [prescriberSearch, prescribers]);
 
+  const queueSummary = React.useMemo(
+    () =>
+      prescriptions.reduce(
+        (accumulator, item) => {
+          const status = String(item?.status || "");
+          accumulator.total += 1;
+          accumulator[status] = (accumulator[status] || 0) + 1;
+
+          if (item?.review_summary?.hasBeenSent) {
+            accumulator.sent += 1;
+          }
+
+          const reviewStatus = normalizeReviewStatus(
+            item?.review_summary?.latestStatus,
+          );
+          accumulator[reviewStatus] = (accumulator[reviewStatus] || 0) + 1;
+          return accumulator;
+        },
+        {
+          total: 0,
+          New: 0,
+          "In Process": 0,
+          Ready: 0,
+          "Picked Up": 0,
+          Cancelled: 0,
+          sent: 0,
+          pending: 0,
+          approved: 0,
+          rejected: 0,
+        },
+      ),
+    [prescriptions],
+  );
+
   const handleFormChange = (event) => {
     const { name, value } = event.target;
     setFormData((current) => ({
@@ -398,6 +432,35 @@ const PrescriptionsPage = () => {
   return (
     <AppShell title="Prescriptions">
       <div className="prescription-page">
+        <section className="prescription-hero">
+          <div>
+            <p className="prescription-eyebrow">Prescription operations</p>
+            <h2>Monitor queue movement and prescriber review status together.</h2>
+            <p className="prescription-subtitle">
+              Track intake, fulfillment, and review outcomes from a single board
+              built for day-to-day pharmacy flow.
+            </p>
+          </div>
+          <div className="prescription-hero-stats">
+            <div>
+              <span>Total prescriptions</span>
+              <strong>{queueSummary.total}</strong>
+            </div>
+            <div>
+              <span>Sent for review</span>
+              <strong>{queueSummary.sent}</strong>
+            </div>
+            <div>
+              <span>Pending reviews</span>
+              <strong>{queueSummary.pending}</strong>
+            </div>
+            <div>
+              <span>Approved reviews</span>
+              <strong>{queueSummary.approved}</strong>
+            </div>
+          </div>
+        </section>
+
         <div className="prescription-grid">
           <Card>
             <div className="prescription-toolbar">

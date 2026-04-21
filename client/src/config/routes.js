@@ -137,9 +137,14 @@ export const API_ENDPOINTS = {
   },
   PRESCRIBERS: {
     LIST: normalizePath("/prescribers"),
+    DETAIL: (id) => normalizePath(`/prescribers/${id}`),
   },
   INVENTORY: {
     LOTS: normalizePath("/inventory/lots"),
+    LOT: (id) => normalizePath(`/inventory/lots/${id}`),
+  },
+  AUDIT_LOGS: {
+    LIST: normalizePath("/audit-logs"),
   },
 };
 

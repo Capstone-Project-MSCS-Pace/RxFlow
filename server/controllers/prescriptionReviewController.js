@@ -7,6 +7,10 @@ import {
   createPrescriptionReviewInvite,
   hashReviewToken,
 } from "../services/prescriptionNotificationService.js";
+import {
+  buildActorContext,
+  writeAuditLog,
+} from "../services/auditLogService.js";
 
 const REVIEW_DECISION_STATUS = {
   approved: "in_process",
@@ -214,6 +218,21 @@ const performReviewDecision = async (req, res, decision) => {
 
     await transaction.commit();
 
+    await writeAuditLog({
+      entityType: "prescription_review",
+      entityId: tokenRecord.id,
+      action: decision,
+      summary: `Prescription ${prescription.prescriptionNumber} was ${decision} by ${tokenRecord.recipientName || tokenRecord.recipientEmail || "prescriber"}.`,
+      metadata: {
+        prescriptionId: prescription.id,
+        prescriptionNumber: prescription.prescriptionNumber,
+        decision,
+        recipientEmail: tokenRecord.recipientEmail,
+        recipientName: tokenRecord.recipientName,
+      },
+      ...buildActorContext(req),
+    });
+
     const refreshedPrescription = await Prescription.findByPk(prescription.id, {
       include: [
         {
@@ -286,6 +305,21 @@ export const sendPrescriptionForReview = async (req, res) => {
         quantityValue: summary.quantityValue,
         patientName: summary.patientName,
       },
+    });
+
+    await writeAuditLog({
+      entityType: "prescription_review",
+      entityId: invite.reviewRecord.id,
+      action: "sent",
+      summary: `Sent prescription ${prescription.prescriptionNumber} for review to ${invite.reviewRecord.recipientName || invite.reviewRecord.recipientEmail}.`,
+      metadata: {
+        prescriptionId: prescription.id,
+        prescriptionNumber: prescription.prescriptionNumber,
+        recipientEmail: invite.reviewRecord.recipientEmail,
+        recipientName: invite.reviewRecord.recipientName,
+        deliveryMode: invite.deliveryMode,
+      },
+      ...buildActorContext(req),
     });
 
     return res.status(200).json({

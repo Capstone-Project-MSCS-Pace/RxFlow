@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import AppShell from "../../components/AppShell.js";
 import Card from "../../components/Card.js";
 import EmptyState from "../../components/EmptyState.js";
+import { useAuth } from "../../context/AuthContext.js";
 import api from "../../services/api.js";
 import "./PrescriberPage.css";
 
@@ -16,13 +17,7 @@ const PrescriberFormFields = ({ formData, onChange }) => (
   <div className="prescribers-form-grid">
     <label>
       Name
-      <input
-        type="text"
-        name="name"
-        value={formData.name}
-        onChange={onChange}
-        required
-      />
+      <input type="text" name="name" value={formData.name} onChange={onChange} required />
     </label>
 
     <label>
@@ -64,15 +59,22 @@ const PrescriberFormFields = ({ formData, onChange }) => (
 );
 
 const PrescribersPage = () => {
+  const { user } = useAuth();
+  const canManagePrescribers = ["admin", "pharmacist"].includes(
+    String(user?.role || "").toLowerCase(),
+  );
+
   const [prescribers, setPrescribers] = useState([]);
   const [selectedId, setSelectedId] = useState("");
   const [search, setSearch] = useState("");
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [modalOpen, setModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState("create");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [saveError, setSaveError] = useState("");
   const [saveLoading, setSaveLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
   const loadPrescribers = React.useCallback(async (query = "") => {
@@ -113,15 +115,38 @@ const PrescribersPage = () => {
     return () => window.clearTimeout(debounceId);
   }, [loadPrescribers, search]);
 
-  const selectedPrescriber = prescribers.find((p) => p.id === selectedId);
+  const selectedPrescriber = prescribers.find((p) => p.id === selectedId) || null;
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
+  const handleChange = (event) => {
+    const { name, value } = event.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleCreate = async (e) => {
-    e.preventDefault();
+  const openCreateModal = () => {
+    setModalMode("create");
+    setFormData(EMPTY_FORM);
+    setSaveError("");
+    setModalOpen(true);
+  };
+
+  const openEditModal = () => {
+    if (!selectedPrescriber) {
+      return;
+    }
+
+    setModalMode("edit");
+    setFormData({
+      name: selectedPrescriber.name || "",
+      contact: selectedPrescriber.contact || "",
+      email: selectedPrescriber.email || "",
+      npi: selectedPrescriber.npi || "",
+    });
+    setSaveError("");
+    setModalOpen(true);
+  };
+
+  const handleSave = async (event) => {
+    event.preventDefault();
     setSaveError("");
     setSuccessMessage("");
     setSaveLoading(true);
@@ -134,42 +159,97 @@ const PrescribersPage = () => {
         npi: formData.npi.trim(),
       };
 
-      const response = await api.createPrescriber(payload);
-      const created = response?.data;
-      if (created?.id) {
-        setSelectedId(created.id);
+      const response =
+        modalMode === "edit" && selectedPrescriber
+          ? await api.updatePrescriber(selectedPrescriber.id, payload)
+          : await api.createPrescriber(payload);
+
+      const saved = response?.data;
+      if (saved?.id) {
+        setSelectedId(saved.id);
       }
 
       await loadPrescribers(search);
       setModalOpen(false);
       setFormData(EMPTY_FORM);
-      setSuccessMessage(response?.message || "Prescriber created.");
+      setSuccessMessage(
+        response?.message ||
+          (modalMode === "edit" ? "Prescriber updated." : "Prescriber created."),
+      );
     } catch (err) {
-      setSaveError(err.message || "Failed to create prescriber.");
+      setSaveError(err.message || "Failed to save prescriber.");
     } finally {
       setSaveLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!selectedPrescriber) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Delete prescriber ${selectedPrescriber.name}? This cannot be undone.`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setDeleteLoading(true);
+    setSuccessMessage("");
+    setSaveError("");
+
+    try {
+      await api.deletePrescriber(selectedPrescriber.id);
+      setSuccessMessage("Prescriber deleted.");
+      setSelectedId("");
+      await loadPrescribers(search);
+    } catch (err) {
+      setSaveError(err.message || "Failed to delete prescriber.");
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
   return (
     <AppShell title="Prescribers">
       <div className="prescribers-page">
+        <section className="prescribers-hero">
+          <div>
+            <p className="prescribers-eyebrow">Prescriber network</p>
+            <h2>Keep contacts, NPI records, and review recipients accurate.</h2>
+            <p className="prescribers-subtitle">
+              Search the directory fast, verify identities, and manage prescriber
+              records without leaving the workflow.
+            </p>
+          </div>
+          <div className="prescribers-hero-stats">
+            <div>
+              <span>Total prescribers</span>
+              <strong>{prescribers.length}</strong>
+            </div>
+            <div>
+              <span>Selected NPI</span>
+              <strong>{selectedPrescriber?.npi || "None"}</strong>
+            </div>
+          </div>
+        </section>
+
         <div className="prescribers-grid">
-          {/* LEFT PANEL */}
-          <Card>
+          <Card className="prescribers-panel">
             <div className="prescribers-toolbar">
               <div>
-                <h3>Prescriber Directory</h3>
+                <h3>Directory</h3>
                 <p className="prescribers-subtitle">
-                  Search prescribers by name or NPI number.
+                  Search by name, email, contact, or NPI number.
                 </p>
               </div>
-              <button
-                className="prescribers-primary-btn"
-                onClick={() => setModalOpen(true)}
-              >
-                Add Prescriber
-              </button>
+              {canManagePrescribers ? (
+                <button className="prescribers-primary-btn" onClick={openCreateModal}>
+                  Add Prescriber
+                </button>
+              ) : null}
             </div>
 
             <div className="prescribers-search">
@@ -177,17 +257,14 @@ const PrescribersPage = () => {
                 type="text"
                 placeholder="Search prescribers"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(event) => setSearch(event.target.value)}
               />
             </div>
 
-            {error ? (
-              <div className="prescribers-message error">{error}</div>
-            ) : null}
+            {error ? <div className="prescribers-message error">{error}</div> : null}
+            {saveError ? <div className="prescribers-message error">{saveError}</div> : null}
             {successMessage ? (
-              <div className="prescribers-message success">
-                {successMessage}
-              </div>
+              <div className="prescribers-message success">{successMessage}</div>
             ) : null}
 
             {loading ? (
@@ -195,113 +272,146 @@ const PrescribersPage = () => {
             ) : prescribers.length === 0 ? (
               <EmptyState
                 title="No prescribers found"
-                description="Try adjusting your search."
+                description="Try adjusting your search or add a new prescriber."
               />
             ) : (
               <div className="prescribers-list">
-                {prescribers.map((p) => (
+                {prescribers.map((prescriber) => (
                   <button
-                    key={p.id}
+                    key={prescriber.id}
                     className={`prescribers-list-item ${
-                      selectedId === p.id ? "active" : ""
+                      selectedId === prescriber.id ? "active" : ""
                     }`}
-                    onClick={() => setSelectedId(p.id)}
+                    onClick={() => setSelectedId(prescriber.id)}
                   >
-                    <strong>{p.name}</strong>
-                    <p>NPI: {p.npi}</p>
-                    <span>{p.contact}</span>
+                    <div>
+                      <strong>{prescriber.name}</strong>
+                      <p>{prescriber.email}</p>
+                    </div>
+                    <span>NPI {prescriber.npi}</span>
                   </button>
                 ))}
               </div>
             )}
           </Card>
 
-          {/* RIGHT PANEL */}
-          <Card>
+          <Card className="prescribers-panel prescribers-detail-panel">
             <div className="prescribers-section-header">
-              <h3>Prescriber Details</h3>
-              {selectedPrescriber && (
-                <span className="prescribers-chip">
-                  NPI: {selectedPrescriber.npi}
-                </span>
-              )}
+              <div>
+                <p className="prescribers-eyebrow">Details</p>
+                <h3>Prescriber profile</h3>
+              </div>
+              {selectedPrescriber ? (
+                <span className="prescribers-chip">NPI: {selectedPrescriber.npi}</span>
+              ) : null}
             </div>
 
             {!selectedPrescriber ? (
               <EmptyState
                 title="Select a prescriber"
-                description="Choose one from the directory."
+                description="Choose one from the directory to inspect contact details."
               />
             ) : (
-              <div className="prescribers-detail-grid">
-                <div>
-                  <span>Name</span>
-                  <strong>{selectedPrescriber.name}</strong>
+              <>
+                <div className="prescribers-spotlight">
+                  <div>
+                    <h4>{selectedPrescriber.name}</h4>
+                    <p>{selectedPrescriber.email}</p>
+                  </div>
+                  <div className="prescribers-spotlight-badge">
+                    <span>Contact</span>
+                    <strong>{selectedPrescriber.contact}</strong>
+                  </div>
                 </div>
 
-                <div>
-                  <span>NPI</span>
-                  <strong>{selectedPrescriber.npi}</strong>
+                <div className="prescribers-detail-grid">
+                  <div>
+                    <span>Name</span>
+                    <strong>{selectedPrescriber.name}</strong>
+                  </div>
+                  <div>
+                    <span>NPI</span>
+                    <strong>{selectedPrescriber.npi}</strong>
+                  </div>
+                  <div>
+                    <span>Contact</span>
+                    <strong>{selectedPrescriber.contact}</strong>
+                  </div>
+                  <div>
+                    <span>Email</span>
+                    <strong>{selectedPrescriber.email}</strong>
+                  </div>
                 </div>
 
-                <div>
-                  <span>Contact</span>
-                  <strong>{selectedPrescriber.contact}</strong>
-                </div>
-
-                <div>
-                  <span>Email</span>
-                  <strong>{selectedPrescriber.email}</strong>
-                </div>
-              </div>
+                {canManagePrescribers ? (
+                  <div className="prescribers-actions">
+                    <button
+                      type="button"
+                      className="prescribers-secondary-btn"
+                      onClick={openEditModal}
+                    >
+                      Edit Prescriber
+                    </button>
+                    <button
+                      type="button"
+                      className="prescribers-danger-btn"
+                      onClick={handleDelete}
+                      disabled={deleteLoading}
+                    >
+                      {deleteLoading ? "Deleting..." : "Delete Prescriber"}
+                    </button>
+                  </div>
+                ) : null}
+              </>
             )}
           </Card>
         </div>
       </div>
 
-      {/* MODAL */}
-      {modalOpen && (
-        <div
-          className="prescribers-modal-backdrop"
-          onClick={() => setModalOpen(false)}
-        >
-          <div
-            className="prescribers-modal"
-            onClick={(e) => e.stopPropagation()}
-          >
+      {modalOpen ? (
+        <div className="prescribers-modal-backdrop" onClick={() => setModalOpen(false)}>
+          <div className="prescribers-modal" onClick={(event) => event.stopPropagation()}>
             <div className="prescribers-modal-header">
-              <h3>Add Prescriber</h3>
-              <button
-                className="prescriber-modal-close"
-                onClick={() => setModalOpen(false)}
-              >
+              <div>
+                <h3>{modalMode === "edit" ? "Edit Prescriber" : "Add Prescriber"}</h3>
+                <p className="prescribers-subtitle">
+                  Keep prescriber contact and NPI records ready for review routing.
+                </p>
+              </div>
+              <button className="prescriber-modal-close" onClick={() => setModalOpen(false)}>
                 Close
               </button>
             </div>
 
-            {saveError ? (
-              <div className="prescribers-message error">{saveError}</div>
-            ) : null}
+            {saveError ? <div className="prescribers-message error">{saveError}</div> : null}
 
-            <form onSubmit={handleCreate} className="prescribers-form">
-              <PrescriberFormFields
-                formData={formData}
-                onChange={handleChange}
-              />
+            <form onSubmit={handleSave} className="prescribers-form">
+              <PrescriberFormFields formData={formData} onChange={handleChange} />
 
               <div className="prescribers-actions">
+                <button
+                  type="button"
+                  className="prescribers-secondary-btn"
+                  onClick={() => setModalOpen(false)}
+                >
+                  Cancel
+                </button>
                 <button
                   type="submit"
                   className="prescribers-primary-btn"
                   disabled={saveLoading}
                 >
-                  {saveLoading ? "Creating..." : "Create"}
+                  {saveLoading
+                    ? "Saving..."
+                    : modalMode === "edit"
+                      ? "Save Changes"
+                      : "Create Prescriber"}
                 </button>
               </div>
             </form>
           </div>
         </div>
-      )}
+      ) : null}
     </AppShell>
   );
 };

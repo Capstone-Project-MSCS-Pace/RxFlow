@@ -1,7 +1,9 @@
 import express from "express";
 import {
   createInventoryLot,
+  deleteInventoryLot,
   listInventoryLots,
+  updateInventoryLot,
 } from "../controllers/inventoryController.js";
 import { authorize, verifyToken } from "../middleware/auth.js";
 
@@ -19,6 +21,20 @@ router.post(
   verifyToken,
   authorize(["pharmacist", "admin"]),
   createInventoryLot,
+);
+
+router.patch(
+  "/lots/:id",
+  verifyToken,
+  authorize(["pharmacist", "admin"]),
+  updateInventoryLot,
+);
+
+router.delete(
+  "/lots/:id",
+  verifyToken,
+  authorize(["pharmacist", "admin"]),
+  deleteInventoryLot,
 );
 
 export default router;

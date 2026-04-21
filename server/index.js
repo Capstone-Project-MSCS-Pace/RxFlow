@@ -21,6 +21,7 @@ import "./models/Prescription.js";
 import "./models/PrescriptionReviewToken.js";
 import "./models/InventoryLot.js";
 import "./models/Prescriber.js";
+import "./models/AuditLog.js";
 import { startDrugPullWorker } from "./workers/drugPullWorker.js";
 
 const app = express();

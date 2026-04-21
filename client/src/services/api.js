@@ -485,6 +485,19 @@ class ApiService {
     });
   }
 
+  async updatePrescriber(id, data) {
+    return await this.request(API_ENDPOINTS.PRESCRIBERS.DETAIL(id), {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deletePrescriber(id) {
+    return await this.request(API_ENDPOINTS.PRESCRIBERS.DETAIL(id), {
+      method: "DELETE",
+    });
+  }
+
   async getPrescriptionReview(token) {
     return await this.request(API_ENDPOINTS.PRESCRIPTIONS.REVIEW(token), {
       method: "GET",
@@ -538,6 +551,51 @@ class ApiService {
       method: "POST",
       body: JSON.stringify(data),
     });
+  }
+
+  async updateInventoryLot(id, data) {
+    return await this.request(API_ENDPOINTS.INVENTORY.LOT(id), {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteInventoryLot(id) {
+    return await this.request(API_ENDPOINTS.INVENTORY.LOT(id), {
+      method: "DELETE",
+    });
+  }
+
+  async listAuditLogs({
+    page = 1,
+    limit = 25,
+    entityType = "",
+    action = "",
+    q = "",
+  } = {}) {
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(limit),
+    });
+
+    if (String(entityType).trim()) {
+      params.set("entityType", String(entityType).trim());
+    }
+
+    if (String(action).trim()) {
+      params.set("action", String(action).trim());
+    }
+
+    if (String(q).trim()) {
+      params.set("q", String(q).trim());
+    }
+
+    return await this.request(
+      `${API_ENDPOINTS.AUDIT_LOGS.LIST}?${params.toString()}`,
+      {
+        method: "GET",
+      },
+    );
   }
 
   getToken() {

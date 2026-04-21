@@ -2,6 +2,10 @@ import { Op } from "sequelize";
 import Patient from "../models/Patient.js";
 import PatientAuditLog from "../models/PatientAudit.js";
 import PatientInsurance from "../models/PatientInsurance.js";
+import {
+  buildActorContext,
+  writeAuditLog,
+} from "../services/auditLogService.js";
 
 const toLimit = (value, fallback = 25, max = 100) =>
   Math.min(Math.max(Number(value) || fallback, 1), max);
@@ -224,6 +228,15 @@ export const createPatient = async (req, res) => {
       }
     }
 
+    await writeAuditLog({
+      entityType: "patient",
+      entityId: patient.id,
+      action: "created",
+      summary: `Created patient ${patient.firstName} ${patient.lastName}.`,
+      metadata: patient.toJSON(),
+      ...buildActorContext(req),
+    });
+
     return res.status(201).json({
       success: true,
       message: "Patient created successfully.",
@@ -273,6 +286,18 @@ export const updatePatient = async (req, res) => {
       }
     }
 
+    await writeAuditLog({
+      entityType: "patient",
+      entityId: patient.id,
+      action: "updated",
+      summary: `Updated patient ${patient.firstName} ${patient.lastName}.`,
+      metadata: {
+        before: oldValues,
+        after: patient.toJSON(),
+      },
+      ...buildActorContext(req),
+    });
+
     return res.status(200).json({
       success: true,
       message: "Patient updated successfully.",
@@ -302,7 +327,17 @@ export const deletePatient = async (req, res) => {
       });
     }
 
+    const snapshot = patient.toJSON();
     await patient.destroy();
+
+    await writeAuditLog({
+      entityType: "patient",
+      entityId: id,
+      action: "deleted",
+      summary: `Deleted patient ${snapshot.firstName} ${snapshot.lastName}.`,
+      metadata: snapshot,
+      ...buildActorContext(req),
+    });
 
     return res.status(200).json({
       success: true,
@@ -425,6 +460,18 @@ export const addPatientInsurance = async (req, res) => {
       pcn_number: pcn_number || null,
     });
 
+    await writeAuditLog({
+      entityType: "patient_insurance",
+      entityId: insurance.insurance_id,
+      action: "created",
+      summary: `Added insurance ${insurance.provider_name} for patient ${patient.patientNumber}.`,
+      metadata: {
+        patientId: id,
+        insurance: insurance.toJSON(),
+      },
+      ...buildActorContext(req),
+    });
+
     return res.status(201).json({
       success: true,
       message: "Patient insurance added successfully.",
@@ -494,7 +541,21 @@ export const updatePatientInsurance = async (req, res) => {
       });
     }
 
+    const before = insurance.toJSON();
     await insurance.update(updates);
+
+    await writeAuditLog({
+      entityType: "patient_insurance",
+      entityId: insurance.insurance_id,
+      action: "updated",
+      summary: `Updated insurance ${insurance.provider_name} for patient ${patient.patientNumber}.`,
+      metadata: {
+        patientId: id,
+        before,
+        after: insurance.toJSON(),
+      },
+      ...buildActorContext(req),
+    });
 
     return res.status(200).json({
       success: true,
@@ -539,7 +600,20 @@ export const deletePatientInsurance = async (req, res) => {
       });
     }
 
+    const snapshot = insurance.toJSON();
     await insurance.destroy();
+
+    await writeAuditLog({
+      entityType: "patient_insurance",
+      entityId: insuranceId,
+      action: "deleted",
+      summary: `Deleted insurance ${snapshot.provider_name} for patient ${patient.patientNumber}.`,
+      metadata: {
+        patientId: id,
+        insurance: snapshot,
+      },
+      ...buildActorContext(req),
+    });
 
     return res.status(200).json({
       success: true,
