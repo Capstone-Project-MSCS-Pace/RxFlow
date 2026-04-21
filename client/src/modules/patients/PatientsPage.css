@@ -211,6 +211,60 @@
   font-size: 0.95rem;
 }
 
+.patients-insurance-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.patients-insurance-item {
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 0.9rem;
+  background: #f9fbfd;
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.patients-insurance-item label {
+  display: grid;
+  gap: 0.4rem;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.patients-insurance-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+
+.patients-insurance-item span {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+.patients-insurance-item strong {
+  color: var(--text-primary);
+  font-size: 0.95rem;
+}
+
+.patients-insurance-form {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.patients-insurance-form h4 {
+  margin: 0;
+  color: var(--text-primary);
+}
+
 .patients-modal-backdrop {
   position: fixed;
   inset: 0;
@@ -291,6 +345,7 @@
   .patients-search,
   .patients-form-grid,
   .patients-detail-grid,
+  .patients-insurance-item,
   .patients-actions,
   .patients-pagination,
   .patients-section-header {

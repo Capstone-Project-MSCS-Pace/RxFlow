@@ -1,6 +1,7 @@
 import { Op } from "sequelize";
 import Patient from "../models/Patient.js";
 import PatientAuditLog from "../models/PatientAudit.js";
+import PatientInsurance from "../models/PatientInsurance.js";
 
 const toLimit = (value, fallback = 25, max = 100) =>
   Math.min(Math.max(Number(value) || fallback, 1), max);
@@ -22,7 +23,10 @@ const generatePatientNumber = async () => {
 
   const latestNumber = latestPatient?.patientNumber || "";
   const numericPortion = Number(
-    String(latestNumber).replace(new RegExp(`^${PATIENT_NUMBER_PREFIX}`, "i"), ""),
+    String(latestNumber).replace(
+      new RegExp(`^${PATIENT_NUMBER_PREFIX}`, "i"),
+      "",
+    ),
   );
   const nextNumber = Number.isFinite(numericPortion) ? numericPortion + 1 : 1;
 
@@ -352,6 +356,199 @@ export const getPatientAudits = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: error.message || "Failed to get patient audits.",
+    });
+  }
+};
+
+/**
+ * List patient insurances
+ */
+export const listPatientInsurances = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const patient = await Patient.findByPk(id);
+
+    if (!patient) {
+      return res.status(404).json({
+        success: false,
+        message: "Patient not found.",
+      });
+    }
+
+    const insurances = await PatientInsurance.findAll({
+      where: { patient_id: id },
+      order: [["createdat", "DESC"]],
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: insurances,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to load patient insurance records.",
+    });
+  }
+};
+
+/**
+ * Add patient insurance
+ */
+export const addPatientInsurance = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { provider_name, member_id, bin_number, pcn_number } = req.body;
+
+    const patient = await Patient.findByPk(id);
+
+    if (!patient) {
+      return res.status(404).json({
+        success: false,
+        message: "Patient not found.",
+      });
+    }
+
+    if (!provider_name || !member_id) {
+      return res.status(400).json({
+        success: false,
+        message: "provider_name and member_id are required.",
+      });
+    }
+
+    const insurance = await PatientInsurance.create({
+      patient_id: id,
+      provider_name,
+      member_id,
+      bin_number: bin_number || null,
+      pcn_number: pcn_number || null,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Patient insurance added successfully.",
+      data: insurance,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to add patient insurance.",
+    });
+  }
+};
+
+/**
+ * Update patient insurance
+ */
+export const updatePatientInsurance = async (req, res) => {
+  try {
+    const { id, insuranceId } = req.params;
+    const { provider_name, member_id, bin_number, pcn_number } = req.body;
+
+    const patient = await Patient.findByPk(id);
+
+    if (!patient) {
+      return res.status(404).json({
+        success: false,
+        message: "Patient not found.",
+      });
+    }
+
+    const insurance = await PatientInsurance.findOne({
+      where: {
+        insurance_id: insuranceId,
+        patient_id: id,
+      },
+    });
+
+    if (!insurance) {
+      return res.status(404).json({
+        success: false,
+        message: "Insurance record not found.",
+      });
+    }
+
+    const updates = {};
+
+    if (provider_name !== undefined) {
+      updates.provider_name = provider_name;
+    }
+
+    if (member_id !== undefined) {
+      updates.member_id = member_id;
+    }
+
+    if (bin_number !== undefined) {
+      updates.bin_number = bin_number || null;
+    }
+
+    if (pcn_number !== undefined) {
+      updates.pcn_number = pcn_number || null;
+    }
+
+    if (!updates.provider_name || !updates.member_id) {
+      return res.status(400).json({
+        success: false,
+        message: "provider_name and member_id are required.",
+      });
+    }
+
+    await insurance.update(updates);
+
+    return res.status(200).json({
+      success: true,
+      message: "Patient insurance updated successfully.",
+      data: insurance,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to update patient insurance.",
+    });
+  }
+};
+
+/**
+ * Delete patient insurance
+ */
+export const deletePatientInsurance = async (req, res) => {
+  try {
+    const { id, insuranceId } = req.params;
+
+    const patient = await Patient.findByPk(id);
+
+    if (!patient) {
+      return res.status(404).json({
+        success: false,
+        message: "Patient not found.",
+      });
+    }
+
+    const insurance = await PatientInsurance.findOne({
+      where: {
+        insurance_id: insuranceId,
+        patient_id: id,
+      },
+    });
+
+    if (!insurance) {
+      return res.status(404).json({
+        success: false,
+        message: "Insurance record not found.",
+      });
+    }
+
+    await insurance.destroy();
+
+    return res.status(200).json({
+      success: true,
+      message: "Patient insurance deleted successfully.",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to delete patient insurance.",
     });
   }
 };

@@ -49,6 +49,12 @@ router.patch(
   authorize(["user", "pharmacist", "admin"]),
   patchPrescriptionInsurance,
 );
+router.put(
+  "/:id/insurance",
+  verifyToken,
+  authorize(["user", "pharmacist", "admin"]),
+  patchPrescriptionInsurance,
+);
 
 router.get("/:id", verifyToken, getPrescription);
 

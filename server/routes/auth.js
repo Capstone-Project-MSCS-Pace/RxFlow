@@ -30,6 +30,12 @@ router.patch(
   authorize(["admin"]),
   updateUserRole,
 );
+router.put(
+  "/users/:id/role",
+  verifyToken,
+  authorize(["admin"]),
+  updateUserRole,
+);
 router.get("/me", verifyToken, getMe);
 router.get("/logout", verifyToken, logout);
 

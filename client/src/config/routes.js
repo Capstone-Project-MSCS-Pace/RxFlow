@@ -115,6 +115,9 @@ export const API_ENDPOINTS = {
   PATIENTS: {
     LIST: normalizePath("/patients"),
     DETAIL: (id) => normalizePath(`/patients/${id}`),
+    INSURANCES: (id) => normalizePath(`/patients/${id}/insurances`),
+    INSURANCE_DETAIL: (id, insuranceId) =>
+      normalizePath(`/patients/${id}/insurances/${insuranceId}`),
   },
   PRESCRIPTIONS: {
     LIST: normalizePath("/prescriptions"),

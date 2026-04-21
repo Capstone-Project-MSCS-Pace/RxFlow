@@ -427,6 +427,88 @@ const endpointMetadata = {
       "Returns paginated audit history of all operations performed on a patient record including creates, updates, reads, and searches.",
     authRequired: true,
   },
+  "GET /api/patients/:id/insurances": {
+    name: "List Patient Insurances",
+    description:
+      "Returns all insurance records linked to a patient. A patient can have multiple insurance entries.",
+    authRequired: true,
+  },
+  "POST /api/patients/:id/insurances": {
+    name: "Add Patient Insurance",
+    description:
+      "Adds a new insurance record for a patient. Restricted to pharmacist and admin roles.",
+    authRequired: true,
+    requestBody: {
+      label: "Patient insurance payload",
+      fields: [
+        {
+          name: "provider_name",
+          type: "string",
+          required: true,
+          example: "Aetna",
+        },
+        {
+          name: "member_id",
+          type: "string",
+          required: true,
+          example: "M123456789",
+        },
+        {
+          name: "bin_number",
+          type: "string",
+          required: false,
+          example: "012345",
+        },
+        {
+          name: "pcn_number",
+          type: "string",
+          required: false,
+          example: "PCN7890",
+        },
+      ],
+    },
+  },
+  "PATCH /api/patients/:id/insurances/:insuranceId": {
+    name: "Update Patient Insurance",
+    description:
+      "Updates an existing patient insurance record. Restricted to pharmacist and admin roles.",
+    authRequired: true,
+    requestBody: {
+      label: "Patient insurance update payload",
+      fields: [
+        {
+          name: "provider_name",
+          type: "string",
+          required: true,
+          example: "Aetna",
+        },
+        {
+          name: "member_id",
+          type: "string",
+          required: true,
+          example: "M123456789",
+        },
+        {
+          name: "bin_number",
+          type: "string",
+          required: false,
+          example: "012345",
+        },
+        {
+          name: "pcn_number",
+          type: "string",
+          required: false,
+          example: "PCN7890",
+        },
+      ],
+    },
+  },
+  "DELETE /api/patients/:id/insurances/:insuranceId": {
+    name: "Delete Patient Insurance",
+    description:
+      "Deletes a patient insurance record. Restricted to pharmacist and admin roles.",
+    authRequired: true,
+  },
   "GET /api/prescriptions": {
     name: "List Prescriptions",
     description:

@@ -53,6 +53,7 @@ class ApiService {
     };
 
     let response;
+    const method = String(options.method || "GET").toUpperCase();
 
     try {
       response = await fetch(url, {
@@ -60,24 +61,49 @@ class ApiService {
         headers,
       });
     } catch (error) {
-      throw new ApiError(
-        "Unable to reach the server. Check that the API is running and the client API URL is configured correctly.",
-        {
-          code: "NETWORK_ERROR",
-          details: error,
-        },
-      );
+      if (method === "PATCH") {
+        try {
+          response = await fetch(url, {
+            ...options,
+            method: "PUT",
+            headers,
+          });
+        } catch (fallbackError) {
+          throw new ApiError(
+            `Unable to reach the server for ${method} ${url}. Browser error: ${fallbackError?.message || "Unknown network error"}`,
+            {
+              code: "NETWORK_ERROR",
+              details: fallbackError,
+            },
+          );
+        }
+      } else {
+        throw new ApiError(
+          `Unable to reach the server for ${method} ${url}. Browser error: ${error?.message || "Unknown network error"}`,
+          {
+            code: "NETWORK_ERROR",
+            details: error,
+          },
+        );
+      }
+    }
+
+    if (!response) {
+      throw new ApiError(`Unable to reach the server for ${method} ${url}.`, {
+        code: "NETWORK_ERROR",
+      });
     }
 
     const { contentType, data, rawBody } = await this.parseResponse(response);
 
-    if (response.ok && !contentType.includes("application/json")) {
+    if (response.ok && contentType.includes("text/html")) {
       throw new ApiError(
         "The client reached an unexpected non-API response. Check the frontend API base URL configuration.",
         {
           status: response.status,
           code: "UNEXPECTED_RESPONSE",
           details: {
+            method: options.method || "GET",
             url,
             contentType,
             preview: rawBody.slice(0, 200),
@@ -320,6 +346,38 @@ class ApiService {
     return await this.request(API_ENDPOINTS.PATIENTS.DETAIL(id), {
       method: "DELETE",
     });
+  }
+
+  async listPatientInsurances(patientId) {
+    return await this.request(API_ENDPOINTS.PATIENTS.INSURANCES(patientId), {
+      method: "GET",
+    });
+  }
+
+  async addPatientInsurance(patientId, data) {
+    return await this.request(API_ENDPOINTS.PATIENTS.INSURANCES(patientId), {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updatePatientInsurance(patientId, insuranceId, data) {
+    return await this.request(
+      API_ENDPOINTS.PATIENTS.INSURANCE_DETAIL(patientId, insuranceId),
+      {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      },
+    );
+  }
+
+  async deletePatientInsurance(patientId, insuranceId) {
+    return await this.request(
+      API_ENDPOINTS.PATIENTS.INSURANCE_DETAIL(patientId, insuranceId),
+      {
+        method: "DELETE",
+      },
+    );
   }
 
   async listPrescriptions({
