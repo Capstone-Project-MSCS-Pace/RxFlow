@@ -12,7 +12,7 @@ This guide runs PostgreSQL locally in Docker for RxFlow development.
 Preferred option for this repo: use the compose override that adds PostgreSQL to the dev stack.
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.dev.postgres.yml up --build
+docker compose --env-file .env.compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.dev.postgres.yml up --build
 ```
 
 Alternative option: run PostgreSQL as a standalone Docker container.
@@ -39,7 +39,9 @@ What this does:
 
 ## 2) Point server environment to local Postgres
 
-Set these values in server/.env:
+When using the compose override above, DB settings are provided by compose (DB host is `postgres`) so you usually do not need to change `server/.env`.
+
+If you are running the server in Docker but Postgres outside compose, set these values in `server/.env`:
 
 ```env
 DB_HOST=host.docker.internal
@@ -53,6 +55,7 @@ Notes:
 
 - Use host.docker.internal when the server runs in Docker and needs to reach Postgres on your host.
 - If the server runs directly on your machine (not in Docker), set DB_HOST=localhost.
+- Inside Docker, never use `localhost` to reach another container. Use service names like `postgres` or `redis`.
 
 ## 3) Verify PostgreSQL is healthy
 
@@ -75,13 +78,13 @@ If you used the compose override in step 1, you are already running all services
 Development mode:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+docker compose --env-file .env.compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 ```
 
 Detached mode:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build -d
+docker compose --env-file .env.compose -f docker-compose.yml -f docker-compose.dev.yml up --build -d
 ```
 
 ## 5) Stop or remove PostgreSQL container

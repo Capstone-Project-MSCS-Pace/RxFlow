@@ -2,11 +2,11 @@ services:
   server:
     environment:
       DB_HOST: postgres
-      DB_PORT: 5432
+      DB_PORT: ${POSTGRES_CONTAINER_PORT:-5432}
       DB_NAME: rxflow
       DB_USER: postgres
       DB_PASSWORD: password
-      DATABASE_URL: postgres://postgres:password@postgres:5432/rxflow
+      DATABASE_URL: postgres://postgres:password@postgres:${POSTGRES_CONTAINER_PORT:-5432}/rxflow
     depends_on:
       postgres:
         condition: service_healthy
@@ -15,7 +15,7 @@ services:
     image: postgres:16
     container_name: rxflow-postgres
     ports:
-      - "5432:5432"
+      - "${POSTGRES_HOST_PORT:-5432}:${POSTGRES_CONTAINER_PORT:-5432}"
     environment:
       POSTGRES_DB: rxflow
       POSTGRES_USER: postgres

@@ -25,6 +25,7 @@ JWT_EXPIRE=7d
 NODE_ENV=development
 REDIS_URL=redis://127.0.0.1:6379
 CLIENT_APP_BASE_URL=http://localhost:3000
+CORS_ORIGINS=http://localhost:3000
 PRESCRIPTION_REVIEW_FALLBACK_EMAIL=aditya.srivastava@pace.edu
 PRESCRIPTION_REVIEW_TOKEN_TTL_HOURS=72
 SMTP_HOST=
@@ -132,6 +133,7 @@ The "Send for review" flow only sends a real email when SMTP is configured.
 - The recipient is the matched prescriber's email when available.
 - If no prescriber email is available, the backend falls back to `PRESCRIPTION_REVIEW_FALLBACK_EMAIL`.
 - `CLIENT_APP_BASE_URL` controls the review link host used in the email body.
+- `CORS_ORIGINS` accepts a comma-separated allowlist for browser origins.
 
 ## API Endpoints
 

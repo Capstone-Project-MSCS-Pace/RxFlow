@@ -18,6 +18,12 @@ FROM base AS builder
 
 RUN npm ci
 
+ARG REACT_APP_API_BASE_URL=
+ARG REACT_APP_API_BASE_PATH=/api
+
+ENV REACT_APP_API_BASE_URL=${REACT_APP_API_BASE_URL}
+ENV REACT_APP_API_BASE_PATH=${REACT_APP_API_BASE_PATH}
+
 # Copy environment file so react-scripts can read REACT_APP_* values at build time
 COPY .env ./.env
 COPY public ./public

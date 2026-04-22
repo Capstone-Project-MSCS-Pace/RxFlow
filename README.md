@@ -76,27 +76,42 @@ RxFlow is built as a standard 3-tier web application:
 
 ## Docker Development
 
+RxFlow now uses one shared base compose file plus environment-specific overrides.
+
+Copy `.env.compose.example` to `.env.compose` and adjust values when needed:
+
+```bash
+cp .env.compose.example .env.compose
+```
+
 Use the development override when you want containerized hot reload for both services:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+docker compose --env-file .env.compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 ```
+
+In development, only the client port is published to the host. The browser talks to `/api`, and the React dev proxy forwards to the server container over Docker DNS (`server:5000`).
 
 If you also want PostgreSQL in Docker (recommended for contributors without access to a shared DB):
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.dev.postgres.yml up --build
+docker compose --env-file .env.compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.dev.postgres.yml up --build
 ```
 
 Need a local PostgreSQL container for development? See [LOCAL_DOCKER_POSTGRES.md](LOCAL_DOCKER_POSTGRES.md).
 
 This mounts `./client` and `./server` into their containers, preserves container-side `node_modules` with named volumes, runs the React dev server for the client, and runs `nodemon` for the server with Docker-friendly file watching.
 
-Production mode remains the default:
+Production-like compose run:
 
 ```bash
-docker compose up --build
+docker compose --env-file .env.compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
 ```
+
+Networking rule of thumb:
+
+- Use `localhost` only for host-to-container access.
+- Use Docker service names (`server`, `redis`, `postgres`) for container-to-container traffic.
 
 ---
 

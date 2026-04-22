@@ -62,26 +62,7 @@ const getDefaultApiBaseUrl = () => {
     return explicitBaseUrl;
   }
 
-  const basePath = normalizePath(readEnv("API_BASE_PATH") || "/api");
-
-  const protocol =
-    readEnv("API_PROTOCOL") ||
-    (typeof window !== "undefined"
-      ? window.location.protocol.replace(":", "")
-      : "");
-
-  const host =
-    readEnv("API_HOST") ||
-    (typeof window !== "undefined" ? window.location.hostname : "");
-
-  const port = readEnv("API_PORT");
-
-  if (!protocol || !host) {
-    return basePath;
-  }
-
-  const portSegment = port ? `:${port}` : "";
-  return `${protocol}://${host}${portSegment}${basePath}`;
+  return normalizePath(readEnv("API_BASE_PATH") || "/api");
 };
 
 const authBasePath = normalizePath(readEnv("AUTH_BASE_PATH") || "/auth");

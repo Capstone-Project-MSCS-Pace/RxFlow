@@ -28,6 +28,12 @@ const app = express();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const parseAllowedOrigins = (value) =>
+  String(value || "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
 const toTitle = (value) =>
   value.replace(/[-_]+/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
 
@@ -66,8 +72,14 @@ const startServer = async () => {
     await connectDB();
     startDrugPullWorker();
 
+    const allowedOrigins = parseAllowedOrigins(process.env.CORS_ORIGINS);
+
     // Middleware
-    app.use(cors());
+    app.use(
+      cors({
+        origin: allowedOrigins.length ? allowedOrigins : true,
+      }),
+    );
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
 
