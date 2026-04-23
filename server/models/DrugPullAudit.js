@@ -51,7 +51,7 @@ const DrugPullAudit = sequelize.define(
       allowNull: true,
     },
     requestedbyuserid: {
-      type: DataTypes.UUID,
+      type: DataTypes.INTEGER,
       allowNull: true,
     },
     startedat: {

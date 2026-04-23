@@ -298,20 +298,60 @@ npm run dev
 
 ```
 server/
+├── .dockerignore
+├── .env
+├── .gitignore
+├── Dockerfile
+├── index.js
+├── package-lock.json
+├── package.json
+├── README.md
+├── test-db.js
+├── assets/
+│   ├── favicon.ico
+│   └── logo.png
 ├── config/
-│   └── db.js           # Database connection
+│   └── db.js
 ├── controllers/
-│   └── authController.js # Auth logic
+│   ├── authController.js
+│   ├── drugController.js
+│   ├── inventoryController.js
+│   ├── patientController.js
+│   ├── prescriptionController.js
+│   └── profileController.js
+├── docs/
+│   ├── apiDocs.js
+│   └── endpointMetadata.js
 ├── middleware/
-│   └── auth.js         # JWT verification
+│   └── auth.js
 ├── models/
-│   └── User.js         # User schema
+│   ├── Drug.js
+│   ├── DrugPullAudit.js
+│   ├── InventoryLot.js
+│   ├── Patient.js
+│   ├── PatientAudit.js
+│   ├── Prescription.js
+│   └── User.js
+├── public/
+│   ├── app.js
+│   ├── favicon.ico
+│   ├── index.html
+│   └── styles.css
+├── queues/
+│   └── drugPullQueue.js
 ├── routes/
-│   └── auth.js         # Auth routes
-├── index.js            # Main server file
-├── .env                # Environment variables
-├── .gitignore          # Git ignore file
-└── package.json        # Dependencies
+│   ├── auth.js
+│   ├── drugs.js
+│   ├── inventory.js
+│   ├── patients.js
+│   ├── prescriptions.js
+│   └── profile.js
+├── services/
+│   ├── drugPullService.js
+│   ├── fhirPrescriptionService.js
+│   └── inventoryService.js
+└── workers/
+  └── drugPullWorker.js
 ```
 
 ## Next Steps

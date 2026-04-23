@@ -89,13 +89,7 @@ export const fetchDrugsFromOpenFda = async ({
       productndc: item.product_ndc,
       genericname: item.generic_name || null,
       brandname: item.brand_name || null,
-      labelername: item.labeler_name || null,
-      dosageform: item.dosage_form || null,
-      route: normalizeFirst(item.route),
-      producttype: item.product_type || null,
-      activesubstances: item.active_ingredients || [],
-      packaging: item.packaging || [],
-      source: "openfda",
+      iscontrolled: Boolean(item.dea_schedule_code),
     }))
     .filter((item) => item.productndc);
 

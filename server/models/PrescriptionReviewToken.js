@@ -10,7 +10,7 @@ const PrescriptionReviewToken = sequelize.define(
       primaryKey: true,
     },
     prescriptionId: {
-      type: DataTypes.UUID,
+      type: DataTypes.INTEGER,
       allowNull: false,
     },
     tokenHash: {

@@ -11,11 +11,12 @@ const PatientAuditLog = sequelize.define(
       primaryKey: true,
     },
     patientId: {
-      type: DataTypes.UUID,
+      type: DataTypes.INTEGER,
       allowNull: false,
+      field: "patient_id",
       references: {
-        model: Patient,
-        key: "id",
+        model: "patient",
+        key: "patient_id",
       },
     },
     fieldName: {
@@ -31,8 +32,9 @@ const PatientAuditLog = sequelize.define(
       allowNull: true,
     },
     changedByUserId: {
-      type: DataTypes.UUID,
+      type: DataTypes.INTEGER,
       allowNull: true,
+      field: "changed_by_user_id",
     },
   },
   {
@@ -46,6 +48,7 @@ const PatientAuditLog = sequelize.define(
 
 PatientAuditLog.belongsTo(Patient, {
   foreignKey: "patientId",
+  targetKey: "id",
   onDelete: "CASCADE",
 });
 

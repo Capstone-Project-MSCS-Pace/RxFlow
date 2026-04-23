@@ -1,6 +1,7 @@
 import User from "../models/User.js";
 import jwt from "jsonwebtoken";
 import { Op } from "sequelize";
+import { normalizeRole } from "../services/schemaCompatService.js";
 
 // Generate JWT Token
 const generateToken = (id, role) => {
@@ -115,10 +116,6 @@ export const login = async (req, res) => {
       });
     }
 
-    // Update last login
-    user.lastlogin = new Date();
-    await user.save();
-
     // Generate token
     const token = generateToken(user.id, user.role);
 
@@ -159,9 +156,9 @@ export const getMe = async (req, res) => {
         email: user.email,
         role: user.role,
         isactive: user.isactive,
-        lastlogin: user.lastlogin,
-        createdat: user.createdat,
-        updatedat: user.updatedat,
+        lastlogin: null,
+        created_at: user.created_at,
+        updated_at: user.updated_at,
       },
     });
   } catch (error) {
@@ -240,21 +237,29 @@ export const listUsers = async (req, res) => {
       where,
       attributes: [
         "id",
-        "fullname",
         "email",
-        "role",
         "isactive",
-        "lastlogin",
-        "createdat",
-        "updatedat",
+        "pharmacyId",
+        "roleId",
+        "created_at",
+        "updated_at",
       ],
-      order: [["createdat", "DESC"]],
+      order: [["created_at", "DESC"]],
     });
 
     res.status(200).json({
       success: true,
       count: users.length,
-      users,
+      users: users.map((user) => ({
+        id: user.id,
+        fullname: user.fullname,
+        email: user.email,
+        role: user.role,
+        isactive: user.isactive,
+        lastlogin: null,
+        created_at: user.created_at,
+        updated_at: user.updated_at,
+      })),
     });
   } catch (error) {
     console.error("List users error:", error);
@@ -280,7 +285,7 @@ export const updateUserRole = async (req, res) => {
       });
     }
 
-    if (!["user", "pharmacist", "admin"].includes(role)) {
+    if (!["technician", "pharmacist", "admin", "user"].includes(role)) {
       return res.status(400).json({
         success: false,
         message: "Invalid role provided",
@@ -303,7 +308,7 @@ export const updateUserRole = async (req, res) => {
       });
     }
 
-    user.role = role;
+    user.role = normalizeRole(role);
     await user.save();
 
     res.status(200).json({
@@ -315,9 +320,9 @@ export const updateUserRole = async (req, res) => {
         email: user.email,
         role: user.role,
         isactive: user.isactive,
-        lastlogin: user.lastlogin,
-        createdat: user.createdat,
-        updatedat: user.updatedat,
+        lastlogin: null,
+        created_at: user.created_at,
+        updated_at: user.updated_at,
       },
     });
   } catch (error) {

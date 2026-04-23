@@ -1,18 +1,20 @@
-import { Op } from "sequelize";
 import Patient from "../models/Patient.js";
 import Prescription from "../models/Prescription.js";
 import Prescriber from "../models/Prescriber.js";
-import PrescriptionReviewToken from "../models/PrescriptionReviewToken.js";
+import Drug from "../models/Drug.js";
 import User from "../models/User.js";
-import {
-  generatePrescriptionNumber,
-  syncMedicationRequestsFromFhir,
-} from "../services/fhirPrescriptionService.js";
+import { syncMedicationRequestsFromFhir } from "../services/fhirPrescriptionService.js";
 import {
   buildActorContext,
   writeAuditLog,
 } from "../services/auditLogService.js";
-import { createPrescriptionReviewInvite } from "../services/prescriptionNotificationService.js";
+import {
+  ensureDrugByDescriptor,
+  ensurePatientByDescriptor,
+  ensurePrescriberByDescriptor,
+  getPrescriptionStatusId,
+  normalizePrescriptionStatus,
+} from "../services/schemaCompatService.js";
 
 const toLimit = (value, fallback = 25, max = 100) =>
   Math.min(Math.max(Number(value) || fallback, 1), max);
@@ -29,197 +31,88 @@ const STATUS_MAP_REVERSE = {
   in_process: "In Process",
   ready: "Ready",
   picked_up: "Picked Up",
-  cancelled: "Cancelled",
 };
 
-const getReviewLifecycleStatus = (reviewToken) => {
-  if (!reviewToken) {
-    return "not_sent";
-  }
-
-  if (reviewToken.decision === "approved") {
-    return "approved";
-  }
-
-  if (reviewToken.decision === "rejected") {
-    return "rejected";
-  }
-
-  if (reviewToken.usedAt) {
-    return "completed";
-  }
-
-  if (
-    reviewToken.expiresAt &&
-    new Date(reviewToken.expiresAt).getTime() < Date.now()
-  ) {
-    return "expired";
-  }
-
-  return "pending";
-};
-
-const toReviewHistoryEntry = (reviewToken) => ({
-  id: reviewToken.id,
-  recipientEmail: reviewToken.recipientEmail,
-  recipientName: reviewToken.recipientName,
-  reviewUrl: reviewToken.reviewUrl,
-  sentAt: reviewToken.sentAt,
-  expiresAt: reviewToken.expiresAt,
-  usedAt: reviewToken.usedAt,
-  decision: reviewToken.decision,
-  status: getReviewLifecycleStatus(reviewToken),
-});
-
-const attachReviewHistory = async (prescriptions) => {
-  if (!Array.isArray(prescriptions) || !prescriptions.length) {
-    return prescriptions;
-  }
-
-  const prescriptionIds = prescriptions
-    .map((item) => item?.id)
-    .filter(Boolean);
-
-  if (!prescriptionIds.length) {
-    return prescriptions;
-  }
-
-  const reviewTokens = await PrescriptionReviewToken.findAll({
-    where: {
-      prescriptionId: {
-        [Op.in]: prescriptionIds,
-      },
-    },
-    order: [
-      ["sentAt", "DESC"],
-      ["createdat", "DESC"],
-    ],
-  });
-
-  const reviewMap = new Map();
-
-  reviewTokens.forEach((token) => {
-    const existing = reviewMap.get(token.prescriptionId) || [];
-    existing.push(token);
-    reviewMap.set(token.prescriptionId, existing);
-  });
-
-  return prescriptions.map((prescription) => {
-    const reviewHistory = (reviewMap.get(prescription.id) || []).map(
-      toReviewHistoryEntry,
-    );
-    const latestReview = reviewHistory[0] || null;
-    const reviewSummary = {
-      hasBeenSent: reviewHistory.length > 0,
-      totalSent: reviewHistory.length,
-      latestStatus: latestReview?.status || "not_sent",
-      latestDecision: latestReview?.decision || null,
-      latestSentAt: latestReview?.sentAt || null,
-      latestReviewedAt: latestReview?.usedAt || null,
-    };
-
-    if (typeof prescription.toJSON === "function") {
-      return {
-        ...prescription.toJSON(),
-        reviewHistory,
-        latestReview,
-        reviewSummary,
-      };
-    }
-
-    return {
-      ...prescription,
-      reviewHistory,
-      latestReview,
-      reviewSummary,
-    };
-  });
-};
-
-const hasClientProvidedPrescriptionId = (payload) => {
-  if (!payload || typeof payload !== "object") {
-    return false;
-  }
-
-  return ["id", "prescription_id", "prescriptionId", "prescriptionNumber"].some(
+const hasClientProvidedPrescriptionId = (payload) =>
+  ["id", "prescription_id", "prescriptionId"].some(
     (key) =>
-      Object.prototype.hasOwnProperty.call(payload, key) &&
+      Object.prototype.hasOwnProperty.call(payload || {}, key) &&
       payload[key] != null &&
       String(payload[key]).trim() !== "",
   );
-};
 
-const hasClientProvidedCreatedDate = (payload) => {
-  if (!payload || typeof payload !== "object") {
-    return false;
-  }
-
-  return (
-    Object.prototype.hasOwnProperty.call(payload, "created_at") &&
-    payload.created_at != null &&
-    String(payload.created_at).trim() !== ""
-  );
-};
-
-const resolvePrescriberName = async (value) => {
-  if (!value) {
-    return "Prescriber";
-  }
-
-  const prescriber = await Prescriber.findOne({
-    where: {
-      [Op.or]: [{ npi: String(value).trim() }, { email: String(value).trim() }],
-    },
+const loadPrescriptionWithPatient = async (id) =>
+  await Prescription.findByPk(id, {
+    include: [
+      {
+        model: Patient,
+        as: "patient",
+        required: false,
+      },
+    ],
   });
 
-  return prescriber?.name || String(value).trim() || "Prescriber";
+const serializePrescription = async (prescription) => {
+  const plain = prescription.toJSON();
+  const drug = await Drug.findByPk(prescription.drugId);
+  const prescriber = await Prescriber.findByPk(prescription.prescriberId);
+  const enteredBy = await User.findByPk(prescription.enteredById);
+  const verifiedBy = prescription.verifiedById
+    ? await User.findByPk(prescription.verifiedById)
+    : null;
+
+  return {
+    ...plain,
+    prescriptionNumber: String(prescription.id),
+    medicationDisplay:
+      drug?.brandname || drug?.genericname || drug?.productndc || `Drug ${prescription.drugId}`,
+    quantityValue: prescription.quantity,
+    reviewHistory: [],
+    latestReview: null,
+    reviewSummary: {
+      hasBeenSent: false,
+      totalSent: 0,
+      latestStatus: "not_sent",
+      latestDecision: null,
+      latestSentAt: null,
+      latestReviewedAt: null,
+    },
+    fhirRaw: {
+      pharmacy_id: prescription.pharmacyId,
+      prescriber_id: prescriber?.npi || String(prescription.prescriberId),
+      drug_name: [
+        drug?.brandname || drug?.genericname || drug?.productndc || `Drug ${prescription.drugId}`,
+      ],
+      entered_by: enteredBy?.fullname || `User ${prescription.enteredById}`,
+      verified_by: verifiedBy?.fullname || null,
+    },
+    source: "manual",
+    createdat: prescription.created_at,
+  };
 };
 
-const sendReviewInviteForPrescription = async ({
-  prescription,
-  prescriberName,
-  patientName,
-}) => {
-  try {
-    return await createPrescriptionReviewInvite({
-      prescriptionId: prescription.id,
-      prescriberName,
-      prescriptionSummary: {
-        medicationDisplay: prescription.medicationDisplay,
-        quantityValue: prescription.quantityValue,
-        patientName,
-      },
-    });
-  } catch (error) {
-    console.error("Failed to create/send prescription review invite:", error);
-    return null;
-  }
-};
-
-const toPrescriptionEntryResponse = (prescription, enteredByName = null) => {
-  const rawMeta = prescription?.fhirRaw || {};
-  const drugNames = Array.isArray(rawMeta?.drug_name)
-    ? rawMeta.drug_name
-    : String(prescription?.medicationDisplay || "")
-        .split(",")
-        .map((value) => value.trim())
-        .filter(Boolean);
+const toPrescriptionEntryResponse = async (prescription) => {
+  const drug = await Drug.findByPk(prescription.drugId);
+  const prescriber = await Prescriber.findByPk(prescription.prescriberId);
+  const enteredBy = await User.findByPk(prescription.enteredById);
+  const verifiedBy = prescription.verifiedById
+    ? await User.findByPk(prescription.verifiedById)
+    : null;
 
   return {
     prescription_id: prescription.id,
-    pharmacy_id: rawMeta?.pharmacy_id || "PHARMACY-DEMO",
+    pharmacy_id: prescription.pharmacyId,
     patient_id: prescription.patientId,
-    prescriber_id: rawMeta?.prescriber_id || null,
-    drug_name: drugNames,
+    prescriber_id: prescriber?.npi || String(prescription.prescriberId),
+    drug_name: [
+      drug?.brandname || drug?.genericname || drug?.productndc || `Drug ${prescription.drugId}`,
+    ],
     status: STATUS_MAP_REVERSE[prescription.status] || "New",
-    quantity:
-      prescription.quantityValue != null
-        ? Number(prescription.quantityValue)
-        : null,
-    entered_by: enteredByName || rawMeta?.entered_by || null,
-    verified_by: rawMeta?.verified_by || null,
-    created_at: prescription.createdat,
-    source: prescription.source,
+    quantity: prescription.quantity,
+    entered_by: enteredBy?.fullname || `User ${prescription.enteredById}`,
+    verified_by: verifiedBy?.fullname || null,
+    created_at: prescription.created_at,
+    source: "manual",
   };
 };
 
@@ -228,36 +121,31 @@ export const listPrescriptions = async (req, res) => {
     const limit = toLimit(req.query?.limit, 25, 100);
     const page = Math.max(Number(req.query?.page) || 1, 1);
     const status = req.query?.status ? String(req.query.status).trim() : null;
-    const source = req.query?.source ? String(req.query.source).trim() : null;
 
     const where = {};
     if (status) {
-      where.status = status;
-    }
-    if (source === "fhir" || source === "manual") {
-      where.source = source;
+      where.statusId = await getPrescriptionStatusId(status);
     }
 
     const { rows, count } = await Prescription.findAndCountAll({
       where,
       limit,
       offset: (page - 1) * limit,
-      order: [["createdat", "DESC"]],
+      order: [["created_at", "DESC"]],
       include: [
         {
           model: Patient,
           as: "patient",
-          attributes: ["id", "firstName", "lastName", "patientNumber", "mrn"],
           required: false,
         },
       ],
     });
 
-    const rowsWithReviewHistory = await attachReviewHistory(rows);
+    const data = await Promise.all(rows.map(serializePrescription));
 
     return res.status(200).json({
       success: true,
-      data: rowsWithReviewHistory,
+      data,
       pagination: {
         page,
         limit,
@@ -275,18 +163,7 @@ export const listPrescriptions = async (req, res) => {
 
 export const getPrescription = async (req, res) => {
   try {
-    const { id } = req.params;
-
-    const prescription = await Prescription.findByPk(id, {
-      include: [
-        {
-          model: Patient,
-          as: "patient",
-          required: false,
-        },
-      ],
-    });
-
+    const prescription = await loadPrescriptionWithPatient(req.params.id);
     if (!prescription) {
       return res.status(404).json({
         success: false,
@@ -294,13 +171,9 @@ export const getPrescription = async (req, res) => {
       });
     }
 
-    const [prescriptionWithReviewHistory] = await attachReviewHistory([
-      prescription,
-    ]);
-
     return res.status(200).json({
       success: true,
-      data: prescriptionWithReviewHistory,
+      data: await serializePrescription(prescription),
     });
   } catch (error) {
     return res.status(500).json({
@@ -320,113 +193,48 @@ export const createPrescriptionManual = async (req, res) => {
       });
     }
 
-    const {
-      patientId,
-      medicationDisplay,
-      sig,
-      quantityValue,
-      quantityUnit,
-      refillsAllowed,
-      authoredOn,
-      prescriberDisplay,
-      notes,
-      insuranceProviderName,
-      insurancePolicyNumber,
-      insuranceGroupId,
-    } = req.body || {};
-
-    if (!medicationDisplay || !String(medicationDisplay).trim()) {
-      return res.status(400).json({
-        success: false,
-        message: "medicationDisplay is required.",
-      });
-    }
-
-    if (patientId) {
-      const patient = await Patient.findByPk(patientId);
-      if (!patient) {
-        return res.status(400).json({
-          success: false,
-          message: "Patient not found for patientId.",
-        });
-      }
-    }
+    const patientId = await ensurePatientByDescriptor({
+      patientId: req.body?.patientId || null,
+    });
+    const prescriberId = await ensurePrescriberByDescriptor({
+      npi: req.body?.prescriberDisplay || null,
+      name: req.body?.prescriberDisplay || "Manual Prescriber",
+    });
+    const drugId = await ensureDrugByDescriptor({
+      brandName: req.body?.medicationDisplay || "Manual Drug",
+      genericName: req.body?.medicationDisplay || "Manual Drug",
+    });
 
     const qty =
-      quantityValue != null && quantityValue !== ""
-        ? Number(quantityValue)
-        : null;
-
-    const prescriptionNumber = await generatePrescriptionNumber();
+      req.body?.quantityValue != null && req.body.quantityValue !== ""
+        ? Number(req.body.quantityValue)
+        : 1;
 
     const prescription = await Prescription.create({
-      prescriptionNumber,
+      patientId,
+      prescriberId,
+      drugId,
+      insuranceId: null,
       status: "new",
-      source: "manual",
-      patientId: patientId || null,
-      medicationDisplay: String(medicationDisplay).trim(),
-      sig: sig ? String(sig).trim() : null,
-      quantityValue: Number.isFinite(qty) ? qty : null,
-      quantityUnit: quantityUnit ? String(quantityUnit).trim() : null,
-      refillsAllowed:
-        refillsAllowed != null && refillsAllowed !== ""
-          ? Number(refillsAllowed)
-          : null,
-      authoredOn: authoredOn ? String(authoredOn).slice(0, 10) : null,
-      prescriberDisplay: prescriberDisplay
-        ? String(prescriberDisplay).trim()
-        : null,
-      notes: notes ? String(notes).trim() : null,
-      insuranceProviderName: insuranceProviderName
-        ? String(insuranceProviderName).trim()
-        : null,
-      insurancePolicyNumber: insurancePolicyNumber
-        ? String(insurancePolicyNumber).trim()
-        : null,
-      insuranceGroupId: insuranceGroupId
-        ? String(insuranceGroupId).trim()
-        : null,
-      etInApproved: false,
-      etInApprovedAt: null,
-      etInApprovedByUserId: null,
-    });
-
-    const withPatient = await Prescription.findByPk(prescription.id, {
-      include: [
-        {
-          model: Patient,
-          as: "patient",
-          attributes: ["id", "firstName", "lastName", "patientNumber", "mrn"],
-          required: false,
-        },
-      ],
-    });
-
-    const patientName = withPatient?.patient
-      ? `${withPatient.patient.firstName || ""} ${withPatient.patient.lastName || ""}`.trim()
-      : null;
-
-    await sendReviewInviteForPrescription({
-      prescription: withPatient || prescription,
-      prescriberName: prescriberDisplay || "Prescriber",
-      patientName,
+      statusId: await getPrescriptionStatusId("new"),
+      quantity: Number.isFinite(qty) && qty > 0 ? Math.round(qty) : 1,
+      enteredById: req.user?.id || 1,
+      verifiedById: null,
     });
 
     await writeAuditLog({
       entityType: "prescription",
       entityId: prescription.id,
       action: "created",
-      summary: `Created prescription ${prescription.prescriptionNumber}.`,
-      metadata: (withPatient || prescription).toJSON
-        ? (withPatient || prescription).toJSON()
-        : withPatient || prescription,
+      summary: `Created prescription ${prescription.id}.`,
+      metadata: await serializePrescription(await loadPrescriptionWithPatient(prescription.id)),
       ...buildActorContext(req),
     });
 
     return res.status(201).json({
       success: true,
       message: "Prescription created and placed in the New queue.",
-      data: withPatient,
+      data: await serializePrescription(await loadPrescriptionWithPatient(prescription.id)),
     });
   } catch (error) {
     return res.status(500).json({
@@ -446,16 +254,7 @@ export const createPrescriptionEntry = async (req, res) => {
       });
     }
 
-    if (hasClientProvidedCreatedDate(req.body)) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Do not provide created_at. The database sets creation date automatically.",
-      });
-    }
-
     const {
-      pharmacy_id,
       patient_id,
       prescriber_id,
       drug_name,
@@ -490,8 +289,9 @@ export const createPrescriptionEntry = async (req, res) => {
       });
     }
 
-    const normalizedStatus =
-      STATUS_MAP[String(status || "New").trim()] || "new";
+    const normalizedStatus = normalizePrescriptionStatus(
+      STATUS_MAP[String(status || "New").trim()] || status || "new",
+    );
     const normalizedQuantity = Number(quantity);
 
     if (!Number.isFinite(normalizedQuantity) || normalizedQuantity <= 0) {
@@ -501,44 +301,47 @@ export const createPrescriptionEntry = async (req, res) => {
       });
     }
 
-    const user = req.user?.id ? await User.findByPk(req.user.id) : null;
-    const enteredByName = user?.fullname || "Unknown User";
-    const prescriptionNumber = await generatePrescriptionNumber();
+    const prescriberRef = await ensurePrescriberByDescriptor({
+      npi: prescriber_id || null,
+      name: prescriber_id || "Prescription Prescriber",
+    });
+    const drugRef = await ensureDrugByDescriptor({
+      brandName: drugNameArray[0],
+      genericName: drugNameArray[0],
+    });
+    const statusId = await getPrescriptionStatusId(normalizedStatus);
+
+    let verifiedById = null;
+    if (verified_by) {
+      const user = await User.findOne({ where: { email: verified_by } });
+      verifiedById = user?.id || null;
+    }
 
     const prescription = await Prescription.create({
-      prescriptionNumber,
+      patientId: Number(patient_id),
+      prescriberId: prescriberRef,
+      drugId: drugRef,
+      insuranceId: null,
       status: normalizedStatus,
-      source: "manual",
-      patientId: patient_id,
-      medicationDisplay: drugNameArray.join(", "),
-      quantityValue: normalizedQuantity,
-      quantityUnit: "units",
-      prescriberDisplay: prescriber_id ? String(prescriber_id).trim() : null,
-      fhirRaw: {
-        pharmacy_id: pharmacy_id || "PHARMACY-DEMO",
-        prescriber_id: prescriber_id || null,
-        drug_name: drugNameArray,
-        entered_by: enteredByName,
-        verified_by: verified_by || null,
-      },
-      etInApproved: false,
-      etInApprovedAt: null,
-      etInApprovedByUserId: null,
+      statusId,
+      quantity: Math.round(normalizedQuantity),
+      enteredById: req.user?.id || 1,
+      verifiedById,
     });
 
     await writeAuditLog({
       entityType: "prescription",
       entityId: prescription.id,
       action: "created",
-      summary: `Created prescription ${prescription.prescriptionNumber}.`,
-      metadata: prescription.toJSON(),
+      summary: `Created prescription ${prescription.id}.`,
+      metadata: await toPrescriptionEntryResponse(prescription),
       ...buildActorContext(req),
     });
 
     return res.status(201).json({
       success: true,
       message: "Prescription entry created successfully.",
-      data: toPrescriptionEntryResponse(prescription, enteredByName),
+      data: await toPrescriptionEntryResponse(prescription),
     });
   } catch (error) {
     return res.status(500).json({
@@ -550,9 +353,7 @@ export const createPrescriptionEntry = async (req, res) => {
 
 export const approvePrescriptionEtIn = async (req, res) => {
   try {
-    const { id } = req.params;
-
-    const prescription = await Prescription.findByPk(id);
+    const prescription = await Prescription.findByPk(req.params.id);
 
     if (!prescription) {
       return res.status(404).json({
@@ -569,52 +370,17 @@ export const approvePrescriptionEtIn = async (req, res) => {
       });
     }
 
-    if (prescription.etInApproved) {
-      return res.status(400).json({
-        success: false,
-        message: "This prescription already has ET-In approval recorded.",
-      });
-    }
-
-    prescription.etInApproved = true;
-    prescription.etInApprovedAt = new Date();
-    prescription.etInApprovedByUserId = req.user.id;
+    prescription.status = "in_process";
+    prescription.verifiedById = req.user?.id || null;
     await prescription.save();
-
-    const withPatient = await Prescription.findByPk(prescription.id, {
-      include: [
-        {
-          model: Patient,
-          as: "patient",
-          attributes: ["id", "firstName", "lastName", "patientNumber", "mrn"],
-          required: false,
-        },
-      ],
-    });
-
-    const patientName = withPatient?.patient
-      ? `${withPatient.patient.firstName || ""} ${withPatient.patient.lastName || ""}`.trim()
-      : null;
-
-    const resolvedPrescriberName = await resolvePrescriberName(
-      prescription.fhirRaw?.prescriber_id || null,
-    );
-
-    await sendReviewInviteForPrescription({
-      prescription: withPatient || prescription,
-      prescriberName: resolvedPrescriberName,
-      patientName,
-    });
 
     await writeAuditLog({
       entityType: "prescription",
       entityId: prescription.id,
       action: "approved_et_in",
-      summary: `Recorded ET-In approval for prescription ${prescription.prescriptionNumber}.`,
+      summary: `Recorded ET-In approval for prescription ${prescription.id}.`,
       metadata: {
         prescriptionId: prescription.id,
-        prescriptionNumber: prescription.prescriptionNumber,
-        etInApprovedAt: prescription.etInApprovedAt,
       },
       ...buildActorContext(req),
     });
@@ -622,7 +388,7 @@ export const approvePrescriptionEtIn = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "ET-In approval recorded.",
-      data: withPatient,
+      data: await serializePrescription(await loadPrescriptionWithPatient(prescription.id)),
     });
   } catch (error) {
     return res.status(500).json({
@@ -635,9 +401,6 @@ export const approvePrescriptionEtIn = async (req, res) => {
 export const patchPrescriptionInsurance = async (req, res) => {
   try {
     const { id } = req.params;
-    const { insuranceProviderName, insurancePolicyNumber, insuranceGroupId } =
-      req.body || {};
-
     const prescription = await Prescription.findByPk(id);
 
     if (!prescription) {
@@ -647,52 +410,31 @@ export const patchPrescriptionInsurance = async (req, res) => {
       });
     }
 
-    const updates = {};
-
-    if (insuranceProviderName !== undefined) {
-      updates.insuranceProviderName = insuranceProviderName
-        ? String(insuranceProviderName).trim()
+    if (req.body?.insuranceId !== undefined) {
+      prescription.insuranceId = req.body.insuranceId
+        ? Number(req.body.insuranceId)
         : null;
-    }
-    if (insurancePolicyNumber !== undefined) {
-      updates.insurancePolicyNumber = insurancePolicyNumber
-        ? String(insurancePolicyNumber).trim()
-        : null;
-    }
-    if (insuranceGroupId !== undefined) {
-      updates.insuranceGroupId = insuranceGroupId
-        ? String(insuranceGroupId).trim()
-        : null;
-    }
-
-    if (Object.keys(updates).length === 0) {
+      await prescription.save();
+    } else {
       return res.status(400).json({
         success: false,
-        message:
-          "Provide at least one of: insuranceProviderName, insurancePolicyNumber, insuranceGroupId.",
+        message: "Provide insuranceId to update prescription insurance.",
       });
     }
-
-    const before = prescription.toJSON();
-    await prescription.update(updates);
-    await prescription.reload();
 
     await writeAuditLog({
       entityType: "prescription",
       entityId: prescription.id,
       action: "updated_insurance",
-      summary: `Updated insurance details for prescription ${prescription.prescriptionNumber}.`,
-      metadata: {
-        before,
-        after: prescription.toJSON(),
-      },
+      summary: `Updated insurance details for prescription ${prescription.id}.`,
+      metadata: { insuranceId: prescription.insuranceId },
       ...buildActorContext(req),
     });
 
     return res.status(200).json({
       success: true,
       message: "Insurance information updated.",
-      data: prescription,
+      data: await serializePrescription(await loadPrescriptionWithPatient(prescription.id)),
     });
   } catch (error) {
     return res.status(500).json({

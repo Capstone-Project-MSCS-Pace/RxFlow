@@ -45,14 +45,59 @@ const sequelize = new Sequelize(
   },
 );
 
+const ensureSchemaFromDdl = async () => {
+  const result = await sequelize.query(
+    `SELECT to_regclass('public.role') AS role_table`,
+  );
+  const roleTable = result?.[0]?.[0]?.role_table;
+
+  if (roleTable) {
+    return;
+  }
+
+  const ddlPath = path.join(__dirname, "..", "models", "schema", "schema_ddl.sql");
+  const ddl = fs.readFileSync(ddlPath, "utf8");
+  await sequelize.query(ddl);
+};
+
+const ensureDefaultPharmacy = async () => {
+  const activeStatusResult = await sequelize.query(
+    `SELECT id FROM pharmacy_status WHERE lower(status) = 'active' LIMIT 1`,
+  );
+  const activeStatusId = activeStatusResult?.[0]?.[0]?.id;
+
+  if (!activeStatusId) {
+    throw new Error("Active pharmacy status is missing from pharmacy_status.");
+  }
+
+  const pharmacyResult = await sequelize.query(
+    `SELECT pharmacy_id FROM pharmacy ORDER BY pharmacy_id ASC LIMIT 1`,
+  );
+  const existingPharmacyId = pharmacyResult?.[0]?.[0]?.pharmacy_id;
+
+  if (existingPharmacyId) {
+    return existingPharmacyId;
+  }
+
+  const insertResult = await sequelize.query(
+    `
+      INSERT INTO pharmacy (name, license_number, subscription_tier, status_id)
+      VALUES ('RxFlow Demo Pharmacy', 'RXFLOW-DEMO-LICENSE', 'Standard', ${Number(activeStatusId)})
+      RETURNING pharmacy_id
+    `,
+  );
+
+  return insertResult?.[0]?.[0]?.pharmacy_id || null;
+};
+
 const connectDB = async () => {
   try {
     await sequelize.authenticate();
     console.log(`PostgreSQL Connected: ${process.env.DB_HOST}`);
 
-    // Sync models with database
-    await sequelize.sync({ alter: false });
-    console.log("Database synchronized");
+    await ensureSchemaFromDdl();
+    await ensureDefaultPharmacy();
+    console.log("Database ready using strict DDL tables");
 
     return sequelize;
   } catch (error) {

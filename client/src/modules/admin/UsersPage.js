@@ -5,7 +5,7 @@ import EmptyState from "../../components/EmptyState.js";
 import { useAuth } from "../../context/AuthContext.js";
 import "./UsersPage.css";
 
-const ROLE_OPTIONS = ["user", "pharmacist", "admin"];
+const ROLE_OPTIONS = ["technician", "pharmacist", "admin"];
 
 const formatDate = (value) => {
   if (!value) {
@@ -39,7 +39,7 @@ const UsersPage = () => {
         setUsers(nextUsers);
         setPendingRoles(
           nextUsers.reduce((accumulator, currentUser) => {
-            accumulator[currentUser.id] = currentUser.role || "user";
+            accumulator[currentUser.id] = currentUser.role || "technician";
             return accumulator;
           }, {}),
         );
@@ -179,7 +179,7 @@ const UsersPage = () => {
                   {users.map((item) => {
                     const isSelf = String(item.id) === String(user?.id);
                     const selectedRole =
-                      pendingRoles[item.id] || item.role || "user";
+                      pendingRoles[item.id] || item.role || "technician";
 
                     return (
                       <tr key={item.id}>
@@ -210,7 +210,7 @@ const UsersPage = () => {
                           </span>
                         </td>
                         <td>{formatDate(item.lastlogin)}</td>
-                        <td>{formatDate(item.createdat)}</td>
+                        <td>{formatDate(item.created_at || item.createdat)}</td>
                         <td>
                           <button
                             type="button"

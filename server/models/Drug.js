@@ -5,65 +5,39 @@ const Drug = sequelize.define(
   "Drug",
   {
     id: {
-      type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
+      type: DataTypes.INTEGER,
       primaryKey: true,
+      autoIncrement: true,
+      field: "drug_id",
     },
     productndc: {
       type: DataTypes.STRING,
       allowNull: false,
       unique: true,
-      validate: {
-        notEmpty: {
-          msg: "productndc is required",
-        },
-      },
-    },
-    genericname: {
-      type: DataTypes.STRING,
-      allowNull: true,
+      field: "ndc_code",
     },
     brandname: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: false,
+      field: "brand_name",
     },
-    labelername: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    dosageform: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    route: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    producttype: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    activesubstances: {
-      type: DataTypes.JSONB,
-      allowNull: true,
-      defaultValue: [],
-    },
-    packaging: {
-      type: DataTypes.JSONB,
-      allowNull: true,
-      defaultValue: [],
-    },
-    source: {
+    genericname: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: "openfda",
+      field: "generic_name",
+    },
+    iscontrolled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      field: "is_controlled",
     },
   },
   {
-    tableName: "drugs",
+    tableName: "drug",
     timestamps: true,
-    createdAt: "createdat",
-    updatedAt: "updatedat",
+    createdAt: "created_at",
+    updatedAt: false,
   },
 );
 

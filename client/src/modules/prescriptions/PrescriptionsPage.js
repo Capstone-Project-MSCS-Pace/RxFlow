@@ -110,7 +110,7 @@ const toPrescriptionEntry = (item) => {
     quantity: item?.quantityValue != null ? Number(item.quantityValue) : null,
     entered_by: enteredBy,
     verified_by: verifiedBy,
-    created_at: item?.createdat || null,
+    created_at: item?.created_at || item?.createdat || null,
     review_history: Array.isArray(item?.reviewHistory) ? item.reviewHistory : [],
     latest_review: item?.latestReview || null,
     review_summary: item?.reviewSummary || {
