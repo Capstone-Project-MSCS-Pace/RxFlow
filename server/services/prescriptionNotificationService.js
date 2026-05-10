@@ -217,15 +217,44 @@ export const createPrescriptionReviewInvite = async ({
 
   const transporter = createTransporter();
   if (transporter) {
-    await transporter.sendMail({
+    console.log("[Email] Attempting SMTP send", {
+      host: process.env.SMTP_HOST,
+      port: process.env.SMTP_PORT,
+      secure: process.env.SMTP_SECURE,
+      user: process.env.SMTP_USER,
       from: process.env.SMTP_FROM || DEFAULT_SMTP_FROM,
       to: recipientEmail,
       subject,
-      text,
-      html: `<p>${text.replace(/\n/g, "<br/>")}</p>`,
+      prescriptionId,
     });
+    try {
+      const info = await transporter.sendMail({
+        from: process.env.SMTP_FROM || DEFAULT_SMTP_FROM,
+        to: recipientEmail,
+        subject,
+        text,
+        html: `<p>${text.replace(/\n/g, "<br/>")}</p>`,
+      });
+      console.log("[Email] SMTP send succeeded", {
+        messageId: info.messageId,
+        response: info.response,
+        accepted: info.accepted,
+        rejected: info.rejected,
+        to: recipientEmail,
+        prescriptionId,
+      });
+    } catch (smtpError) {
+      console.error("[Email] SMTP send FAILED", {
+        error: smtpError.message,
+        code: smtpError.code,
+        command: smtpError.command,
+        to: recipientEmail,
+        prescriptionId,
+      });
+      throw smtpError;
+    }
   } else {
-    console.log("[Prescription email stub]", {
+    console.log("[Email] SMTP not configured — stub mode", {
       to: recipientEmail,
       subject,
       reviewUrl,

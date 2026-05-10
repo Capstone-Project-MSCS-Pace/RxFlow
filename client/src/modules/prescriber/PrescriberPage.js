@@ -112,6 +112,8 @@ const PrescribersPage = () => {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState("");
   const [historyData, setHistoryData] = useState({ counts: null, history: [] });
+  const [resendLoading, setResendLoading] = useState(null);
+  const [resendMessage, setResendMessage] = useState("");
 
   const loadPrescribers = React.useCallback(async (query = "") => {
     setLoading(true);
@@ -260,6 +262,19 @@ const PrescribersPage = () => {
       setSaveError(err.message || "Failed to save prescriber.");
     } finally {
       setSaveLoading(false);
+    }
+  };
+
+  const handleResend = async (prescriptionId) => {
+    setResendLoading(prescriptionId);
+    setResendMessage("");
+    try {
+      const response = await api.sendPrescriptionForReview(prescriptionId);
+      setResendMessage(response?.message || "Review email resent.");
+    } catch (err) {
+      setResendMessage(err.message || "Failed to resend review email.");
+    } finally {
+      setResendLoading(null);
     }
   };
 
@@ -442,6 +457,10 @@ const PrescribersPage = () => {
                       </div>
                     </div>
 
+                    {resendMessage ? (
+                      <div className="prescribers-message">{resendMessage}</div>
+                    ) : null}
+
                     {historyError ? (
                       <div className="prescribers-message error">{historyError}</div>
                     ) : null}
@@ -493,6 +512,19 @@ const PrescribersPage = () => {
                                   {latestReview.recipientName ||
                                     latestReview.recipientEmail ||
                                     selectedPrescriber.email}
+                                </div>
+                              ) : null}
+
+                              {reviewStatus === "pending" && canManagePrescribers ? (
+                                <div className="prescribers-history-actions">
+                                  <button
+                                    type="button"
+                                    className="prescribers-secondary-btn"
+                                    onClick={() => handleResend(item.id)}
+                                    disabled={resendLoading === item.id}
+                                  >
+                                    {resendLoading === item.id ? "Resending..." : "Resend for review"}
+                                  </button>
                                 </div>
                               ) : null}
                             </article>

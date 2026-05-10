@@ -287,6 +287,10 @@
   margin: 0.25rem 0 0;
 }
 
+.prescribers-history-actions {
+  margin-top: 0.75rem;
+}
+
 .prescribers-history-meta {
   margin-top: 0.85rem;
 }
