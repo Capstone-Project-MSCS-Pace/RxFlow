@@ -456,6 +456,14 @@ class ApiService {
     );
   }
 
+  async listPatientPrescriptions(patientId) {
+    const params = new URLSearchParams({ patientId: String(patientId), limit: "100", page: "1" });
+    return await this.request(
+      `${API_ENDPOINTS.PRESCRIPTIONS.LIST}?${params.toString()}`,
+      { method: "GET" },
+    );
+  }
+
   async getPrescription(id) {
     return await this.request(API_ENDPOINTS.PRESCRIPTIONS.DETAIL(id), {
       method: "GET",
@@ -506,6 +514,33 @@ class ApiService {
     return await this.request(API_ENDPOINTS.PRESCRIPTIONS.SEND_FOR_REVIEW(id), {
       method: "POST",
       body: JSON.stringify({}),
+    });
+  }
+
+  async getPrescriptionLots(id) {
+    return await this.request(API_ENDPOINTS.PRESCRIPTIONS.LOTS(id), {
+      method: "GET",
+    });
+  }
+
+  async markPrescriptionReady(id, lotId) {
+    return await this.request(API_ENDPOINTS.PRESCRIPTIONS.MARK_READY(id), {
+      method: "POST",
+      body: JSON.stringify(lotId ? { lotId } : {}),
+    });
+  }
+
+  async markPrescriptionPickedUp(id) {
+    return await this.request(API_ENDPOINTS.PRESCRIPTIONS.MARK_PICKED_UP(id), {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+  }
+
+  async cancelPrescription(id, reason) {
+    return await this.request(API_ENDPOINTS.PRESCRIPTIONS.CANCEL(id), {
+      method: "POST",
+      body: JSON.stringify({ reason }),
     });
   }
 

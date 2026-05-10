@@ -556,6 +556,9 @@ const PatientsPage = () => {
   const [deleteLoading, setDeleteLoading] = React.useState(false);
 
   const [activeTab, setActiveTab] = React.useState("details");
+  const [orders, setOrders] = React.useState([]);
+  const [ordersLoading, setOrdersLoading] = React.useState(false);
+  const [ordersError, setOrdersError] = React.useState("");
   const [insuranceList, setInsuranceList] = React.useState([]);
   const [insuranceLoading, setInsuranceLoading] = React.useState(false);
   const [insuranceError, setInsuranceError] = React.useState("");
@@ -710,6 +713,20 @@ const PatientsPage = () => {
       fetchPatientInsurances(selectedPatientId);
     }
   }, [activeTab, fetchPatientInsurances, selectedPatientId]);
+
+  React.useEffect(() => {
+    if (activeTab !== "orders" || !selectedPatientId) {
+      return;
+    }
+    let cancelled = false;
+    setOrdersLoading(true);
+    setOrdersError("");
+    api.listPatientPrescriptions(selectedPatientId)
+      .then((res) => { if (!cancelled) setOrders(res?.data || []); })
+      .catch((err) => { if (!cancelled) setOrdersError(err.message || "Failed to load orders."); })
+      .finally(() => { if (!cancelled) setOrdersLoading(false); });
+    return () => { cancelled = true; };
+  }, [activeTab, selectedPatientId]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -1111,6 +1128,12 @@ const PatientsPage = () => {
                   >
                     Insurance
                   </button>
+                  <button
+                    className={activeTab === "orders" ? "active" : ""}
+                    onClick={() => setActiveTab("orders")}
+                  >
+                    Orders
+                  </button>
                 </div>
                 {selectedPatient ? (
                   <span className="patients-chip">
@@ -1118,7 +1141,56 @@ const PatientsPage = () => {
                   </span>
                 ) : null}
               </div>
-              {activeTab === "insurance" ? (
+              {activeTab === "orders" ? (
+                selectedPatient ? (
+                  <div className="patients-orders-panel">
+                    {ordersError ? (
+                      <div className="patients-message error">{ordersError}</div>
+                    ) : null}
+                    {ordersLoading ? (
+                      <div className="patients-message">Loading orders...</div>
+                    ) : orders.length === 0 ? (
+                      <EmptyState
+                        title="No prescriptions"
+                        description="This patient has no prescription history yet."
+                      />
+                    ) : (
+                      <div className="patients-orders-list">
+                        {orders.map((rx) => {
+                          const drug = Array.isArray(rx.fhirRaw?.drug_name)
+                            ? rx.fhirRaw.drug_name[0]
+                            : rx.medicationDisplay || "Drug";
+                          const status = String(rx.status || "").replace(/_/g, " ");
+                          return (
+                            <div key={rx.id} className="patients-order-item">
+                              <div className="patients-order-header">
+                                <strong>{drug}</strong>
+                                <span className={`patients-order-pill status-${String(rx.status || "").toLowerCase()}`}>
+                                  {status.charAt(0).toUpperCase() + status.slice(1)}
+                                </span>
+                              </div>
+                              <div className="patients-order-meta">
+                                <span>Rx #{rx.prescriptionNumber || rx.id}</span>
+                                <span>Qty: {rx.quantityValue ?? rx.quantity ?? "-"}</span>
+                                <span>
+                                  {rx.created_at
+                                    ? new Date(rx.created_at).toLocaleDateString()
+                                    : "-"}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <EmptyState
+                    title="Select a patient"
+                    description="Choose a patient to view their prescriptions."
+                  />
+                )
+              ) : activeTab === "insurance" ? (
                 selectedPatient ? (
                   <InsuranceSection
                     selectedPatient={selectedPatient}

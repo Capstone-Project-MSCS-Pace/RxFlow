@@ -299,7 +299,7 @@ const InventoryPage = () => {
     setLotSaving(true);
 
     const payload = {
-      drugId: lotForm.drugId.trim(),
+      drugId: Number(lotForm.drugId),
       lotNumber: lotForm.lotNumber.trim(),
       expiryDate: lotForm.expiryDate,
       quantityOnHand: Number(lotForm.quantityOnHand) || 0,

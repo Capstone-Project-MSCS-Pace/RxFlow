@@ -243,6 +243,56 @@
   gap: 0.85rem;
 }
 
+.patients-orders-panel {
+  margin-top: 0.5rem;
+}
+
+.patients-orders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.patients-order-item {
+  border: 1px solid var(--medium-gray);
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  background: #fff;
+}
+
+.patients-order-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.patients-order-header strong {
+  color: var(--text-dark);
+}
+
+.patients-order-meta {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--text-light);
+}
+
+.patients-order-pill {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+}
+
+.patients-order-pill.status-new { background: #dbeafe; color: #1d4ed8; }
+.patients-order-pill.status-in_process { background: #fef3c7; color: #b45309; }
+.patients-order-pill.status-ready { background: #dcfce7; color: #15803d; }
+.patients-order-pill.status-picked_up { background: #f3f4f6; color: #374151; }
+.patients-order-pill.status-cancelled { background: #ffe4e6; color: #be123c; }
+
 .patients-detail-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }

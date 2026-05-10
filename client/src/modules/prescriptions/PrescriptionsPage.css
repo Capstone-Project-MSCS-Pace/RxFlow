@@ -231,6 +231,9 @@
 
 .prescription-details-actions {
   margin-top: 1rem;
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
 }
 
 .prescription-review-history {
@@ -318,6 +321,18 @@
 .prescription-primary-btn { background: var(--navy); color: #fff; }
 .prescription-secondary-btn,
 .prescription-modal-close { background: var(--light-gray); color: var(--dark-gray); }
+
+.prescription-danger-btn {
+  border: none;
+  border-radius: 12px;
+  padding: 0.74rem 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  background: #ffe4e6;
+  color: #be123c;
+}
+
+.prescription-danger-btn:disabled { opacity: 0.55; cursor: not-allowed; }
 
 .prescription-modal-backdrop {
   position: fixed;

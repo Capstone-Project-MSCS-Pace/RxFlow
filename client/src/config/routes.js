@@ -137,6 +137,10 @@ export const API_ENDPOINTS = {
     INSURANCE: (id) => normalizePath(`/prescriptions/${id}/insurance`),
     SEND_FOR_REVIEW: (id) =>
       normalizePath(`/prescriptions/${id}/send-for-review`),
+    LOTS: (id) => normalizePath(`/prescriptions/${id}/lots`),
+    MARK_READY: (id) => normalizePath(`/prescriptions/${id}/ready`),
+    MARK_PICKED_UP: (id) => normalizePath(`/prescriptions/${id}/picked-up`),
+    CANCEL: (id) => normalizePath(`/prescriptions/${id}/cancel`),
     REVIEW: (token) => normalizePath(`/prescriptions/review/${token}`),
     REVIEW_APPROVE: (token) =>
       normalizePath(`/prescriptions/review/${token}/approve`),

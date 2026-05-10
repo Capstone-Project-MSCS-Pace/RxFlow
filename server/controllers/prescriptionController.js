@@ -20,6 +20,7 @@ import {
   getPrescriptionStatusId,
   normalizePrescriptionStatus,
 } from "../services/schemaCompatService.js";
+import { dispensePrescription, getLotsForDrug } from "../services/dispensingService.js";
 
 const toLimit = (value, fallback = 25, max = 100) =>
   Math.min(Math.max(Number(value) || fallback, 1), max);
@@ -128,9 +129,14 @@ export const listPrescriptions = async (req, res) => {
     const page = Math.max(Number(req.query?.page) || 1, 1);
     const status = req.query?.status ? String(req.query.status).trim() : null;
 
+    const patientId = req.query?.patientId ? Number(req.query.patientId) : null;
+
     const where = {};
     if (status) {
       where.statusId = await getPrescriptionStatusId(status);
+    }
+    if (patientId) {
+      where.patientId = patientId;
     }
 
     const { rows, count } = await Prescription.findAndCountAll({
@@ -376,6 +382,7 @@ export const approvePrescriptionEtIn = async (req, res) => {
       });
     }
 
+    prescription.statusId = await getPrescriptionStatusId("in_process");
     prescription.status = "in_process";
     prescription.verifiedById = req.user?.id || null;
     await prescription.save();
@@ -447,6 +454,147 @@ export const patchPrescriptionInsurance = async (req, res) => {
       success: false,
       message: error.message || "Failed to update insurance.",
     });
+  }
+};
+
+export const getLotsForPrescription = async (req, res) => {
+  try {
+    const prescription = await Prescription.findByPk(req.params.id);
+    if (!prescription) {
+      return res.status(404).json({ success: false, message: "Prescription not found." });
+    }
+
+    const lots = await getLotsForDrug(prescription.drugId);
+    return res.status(200).json({ success: true, data: lots });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message || "Failed to load lots." });
+  }
+};
+
+export const markPrescriptionReady = async (req, res) => {
+  try {
+    const prescription = await Prescription.findByPk(req.params.id);
+
+    if (!prescription) {
+      return res.status(404).json({ success: false, message: "Prescription not found." });
+    }
+
+    if (prescription.status !== "in_process") {
+      return res.status(400).json({
+        success: false,
+        message: "Only prescriptions In Process can be marked as Ready.",
+      });
+    }
+
+    const { lotId } = req.body || {};
+    if (lotId) {
+      await dispensePrescription({
+        prescriptionId: prescription.id,
+        lotId: Number(lotId),
+        quantity: prescription.quantity,
+        req,
+      });
+    }
+
+    prescription.statusId = await getPrescriptionStatusId("ready");
+    prescription.status = "ready";
+    await prescription.save();
+
+    await writeAuditLog({
+      entityType: "prescription",
+      entityId: prescription.id,
+      action: "marked_ready",
+      summary: `Prescription ${prescription.id} marked as Ready for pickup.`,
+      metadata: { prescriptionId: prescription.id, lotId: lotId || null },
+      ...buildActorContext(req),
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Prescription marked as Ready for pickup.",
+      data: await serializePrescription(await loadPrescriptionWithPatient(prescription.id)),
+    });
+  } catch (error) {
+    const status = error.status ?? 500;
+    return res.status(status).json({ success: false, message: error.message || "Failed to mark prescription ready." });
+  }
+};
+
+export const markPrescriptionPickedUp = async (req, res) => {
+  try {
+    const prescription = await Prescription.findByPk(req.params.id);
+
+    if (!prescription) {
+      return res.status(404).json({ success: false, message: "Prescription not found." });
+    }
+
+    if (prescription.status !== "ready") {
+      return res.status(400).json({
+        success: false,
+        message: "Only Ready prescriptions can be marked as Picked Up.",
+      });
+    }
+
+    prescription.statusId = await getPrescriptionStatusId("picked_up");
+    prescription.status = "picked_up";
+    await prescription.save();
+
+    await writeAuditLog({
+      entityType: "prescription",
+      entityId: prescription.id,
+      action: "picked_up",
+      summary: `Prescription ${prescription.id} marked as Picked Up.`,
+      metadata: { prescriptionId: prescription.id },
+      ...buildActorContext(req),
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Prescription marked as Picked Up.",
+      data: await serializePrescription(await loadPrescriptionWithPatient(prescription.id)),
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message || "Failed to mark prescription as picked up." });
+  }
+};
+
+export const cancelPrescription = async (req, res) => {
+  try {
+    const prescription = await Prescription.findByPk(req.params.id);
+
+    if (!prescription) {
+      return res.status(404).json({ success: false, message: "Prescription not found." });
+    }
+
+    if (["picked_up", "cancelled"].includes(prescription.status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Picked Up or already Cancelled prescriptions cannot be cancelled.",
+      });
+    }
+
+    const reason = String(req.body?.reason || "").trim() || "No reason provided.";
+
+    prescription.statusId = await getPrescriptionStatusId("cancelled");
+    prescription.status = "cancelled";
+    await prescription.save();
+
+    await writeAuditLog({
+      entityType: "prescription",
+      entityId: prescription.id,
+      action: "cancelled",
+      summary: `Prescription ${prescription.id} cancelled. Reason: ${reason}`,
+      metadata: { prescriptionId: prescription.id, reason },
+      ...buildActorContext(req),
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Prescription cancelled.",
+      data: await serializePrescription(await loadPrescriptionWithPatient(prescription.id)),
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message || "Failed to cancel prescription." });
   }
 };
 

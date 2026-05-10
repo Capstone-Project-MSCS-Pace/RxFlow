@@ -11,6 +11,7 @@ import {
   buildActorContext,
   writeAuditLog,
 } from "../services/auditLogService.js";
+import { getPrescriptionStatusId } from "../services/schemaCompatService.js";
 
 const REVIEW_DECISION_STATUS = {
   approved: "ready",
@@ -132,7 +133,9 @@ const performReviewDecision = async (req, res, decision) => {
       });
     }
 
-    prescription.status = REVIEW_DECISION_STATUS[decision];
+    const nextStatus = REVIEW_DECISION_STATUS[decision];
+    prescription.statusId = await getPrescriptionStatusId(nextStatus);
+    prescription.status = nextStatus;
     await prescription.save();
     const consumedToken = await markReviewTokenUsed({
       tokenRecordId: tokenRecord.id,

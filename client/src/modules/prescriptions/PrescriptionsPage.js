@@ -152,6 +152,18 @@ const PrescriptionsPage = () => {
   const [saveError, setSaveError] = React.useState("");
   const [saveSuccess, setSaveSuccess] = React.useState("");
 
+  const [dispenseModal, setDispenseModal] = React.useState({ open: false, prescriptionId: null });
+  const [lots, setLots] = React.useState([]);
+  const [lotsLoading, setLotsLoading] = React.useState(false);
+  const [selectedLotId, setSelectedLotId] = React.useState("");
+  const [dispenseLoading, setDispenseLoading] = React.useState(false);
+
+  const [cancelModal, setCancelModal] = React.useState({ open: false, prescriptionId: null });
+  const [cancelReason, setCancelReason] = React.useState("");
+  const [cancelLoading, setCancelLoading] = React.useState(false);
+
+  const [pickupLoading, setPickupLoading] = React.useState("");
+
   const fetchPrescriptions = React.useCallback(async () => {
     setLoading(true);
     setError("");
@@ -369,6 +381,90 @@ const PrescriptionsPage = () => {
       setSaveError(err.message || "Failed to send prescription for review.");
     } finally {
       setReviewLoading("");
+    }
+  };
+
+  const openDispenseModal = async (prescriptionId) => {
+    setDispenseModal({ open: true, prescriptionId });
+    setSelectedLotId("");
+    setSaveError("");
+    setLotsLoading(true);
+    try {
+      const response = await api.getPrescriptionLots(prescriptionId);
+      setLots(response?.data || []);
+    } catch {
+      setLots([]);
+    } finally {
+      setLotsLoading(false);
+    }
+  };
+
+  const closeDispenseModal = () => {
+    setDispenseModal({ open: false, prescriptionId: null });
+    setLots([]);
+    setSelectedLotId("");
+  };
+
+  const handleMarkReady = async () => {
+    setDispenseLoading(true);
+    setSaveError("");
+    try {
+      const response = await api.markPrescriptionReady(
+        dispenseModal.prescriptionId,
+        selectedLotId ? Number(selectedLotId) : null,
+      );
+      setSaveSuccess(response?.message || "Prescription marked as Ready.");
+      closeDispenseModal();
+      await fetchPrescriptions();
+    } catch (err) {
+      setSaveError(err.message || "Failed to mark prescription as Ready.");
+    } finally {
+      setDispenseLoading(false);
+    }
+  };
+
+  const handlePickedUp = async (prescriptionId) => {
+    if (!window.confirm("Confirm patient has picked up this prescription?")) {
+      return;
+    }
+    setPickupLoading(prescriptionId);
+    setSaveError("");
+    setSaveSuccess("");
+    try {
+      const response = await api.markPrescriptionPickedUp(prescriptionId);
+      setSaveSuccess(response?.message || "Prescription marked as Picked Up.");
+      await fetchPrescriptions();
+    } catch (err) {
+      setSaveError(err.message || "Failed to mark prescription as Picked Up.");
+    } finally {
+      setPickupLoading("");
+    }
+  };
+
+  const openCancelModal = (prescriptionId) => {
+    setCancelModal({ open: true, prescriptionId });
+    setCancelReason("");
+    setSaveError("");
+  };
+
+  const closeCancelModal = () => {
+    setCancelModal({ open: false, prescriptionId: null });
+    setCancelReason("");
+  };
+
+  const handleCancel = async (event) => {
+    event.preventDefault();
+    setCancelLoading(true);
+    setSaveError("");
+    try {
+      const response = await api.cancelPrescription(cancelModal.prescriptionId, cancelReason);
+      setSaveSuccess(response?.message || "Prescription cancelled.");
+      closeCancelModal();
+      await fetchPrescriptions();
+    } catch (err) {
+      setSaveError(err.message || "Failed to cancel prescription.");
+    } finally {
+      setCancelLoading(false);
     }
   };
 
@@ -618,19 +714,46 @@ const PrescriptionsPage = () => {
                     </div>
                   ) : null}
                 </div>
-                {selected.status === "New" ? (
+                {["New", "In Process", "Ready"].includes(selected.status) ? (
                   <div className="prescription-details-actions">
+                    {selected.status === "New" ? (
+                      <button
+                        type="button"
+                        className="prescription-secondary-btn"
+                        onClick={() => handleSendForReview(selected.prescription_id)}
+                        disabled={reviewLoading === selected.prescription_id}
+                      >
+                        {reviewLoading === selected.prescription_id ? "Sending..." : "Send for review"}
+                      </button>
+                    ) : null}
+
+                    {selected.status === "In Process" ? (
+                      <button
+                        type="button"
+                        className="prescription-secondary-btn"
+                        onClick={() => openDispenseModal(selected.prescription_id)}
+                      >
+                        Mark as Ready
+                      </button>
+                    ) : null}
+
+                    {selected.status === "Ready" ? (
+                      <button
+                        type="button"
+                        className="prescription-secondary-btn"
+                        onClick={() => handlePickedUp(selected.prescription_id)}
+                        disabled={pickupLoading === selected.prescription_id}
+                      >
+                        {pickupLoading === selected.prescription_id ? "Recording..." : "Record Pickup"}
+                      </button>
+                    ) : null}
+
                     <button
                       type="button"
-                      className="prescription-secondary-btn"
-                      onClick={() =>
-                        handleSendForReview(selected.prescription_id)
-                      }
-                      disabled={reviewLoading === selected.prescription_id}
+                      className="prescription-danger-btn"
+                      onClick={() => openCancelModal(selected.prescription_id)}
                     >
-                      {reviewLoading === selected.prescription_id
-                        ? "Sending..."
-                        : "Send for review"}
+                      Cancel Prescription
                     </button>
                   </div>
                 ) : null}
@@ -787,6 +910,127 @@ const PrescriptionsPage = () => {
                   disabled={saveLoading}
                 >
                   {saveLoading ? "Saving..." : "Create Prescription"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
+      {dispenseModal.open ? (
+        <div className="prescription-modal-backdrop" onClick={closeDispenseModal}>
+          <div className="prescription-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="prescription-modal-header">
+              <div>
+                <h3>Mark as Ready</h3>
+                <p className="prescription-subtitle">
+                  Select an inventory lot to deduct from, or proceed without deduction.
+                </p>
+              </div>
+              <button className="prescription-modal-close" onClick={closeDispenseModal}>
+                Close
+              </button>
+            </div>
+
+            {saveError ? (
+              <div className="prescription-message error">{saveError}</div>
+            ) : null}
+
+            {lotsLoading ? (
+              <div className="prescription-message">Loading inventory lots...</div>
+            ) : lots.length === 0 ? (
+              <div className="prescription-message">
+                No inventory lots found for this drug. You can still mark as Ready without deducting stock.
+              </div>
+            ) : (
+              <div className="prescription-form-grid">
+                <label>
+                  Inventory Lot
+                  <select
+                    value={selectedLotId}
+                    onChange={(e) => setSelectedLotId(e.target.value)}
+                  >
+                    <option value="">— Skip inventory deduction —</option>
+                    {lots.map((lot) => (
+                      <option key={lot.id} value={lot.id} disabled={lot.expired || lot.quantityOnHand === 0}>
+                        {lot.lotNumber} | Qty: {lot.quantityOnHand} | Exp: {lot.expiryDate}
+                        {lot.expired ? " (EXPIRED)" : ""}
+                        {lot.quantityOnHand === 0 ? " (OUT OF STOCK)" : ""}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            )}
+
+            <div className="prescription-modal-actions">
+              <button
+                type="button"
+                className="prescription-secondary-btn"
+                onClick={closeDispenseModal}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="prescription-primary-btn"
+                onClick={handleMarkReady}
+                disabled={dispenseLoading}
+              >
+                {dispenseLoading ? "Saving..." : "Confirm Ready"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {cancelModal.open ? (
+        <div className="prescription-modal-backdrop" onClick={closeCancelModal}>
+          <div className="prescription-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="prescription-modal-header">
+              <div>
+                <h3>Cancel Prescription</h3>
+                <p className="prescription-subtitle">
+                  Provide a reason for cancellation. This action cannot be undone.
+                </p>
+              </div>
+              <button className="prescription-modal-close" onClick={closeCancelModal}>
+                Close
+              </button>
+            </div>
+
+            {saveError ? (
+              <div className="prescription-message error">{saveError}</div>
+            ) : null}
+
+            <form className="prescription-form" onSubmit={handleCancel}>
+              <div className="prescription-form-grid">
+                <label>
+                  Reason
+                  <input
+                    type="text"
+                    value={cancelReason}
+                    onChange={(e) => setCancelReason(e.target.value)}
+                    placeholder="e.g. Patient requested cancellation"
+                    required
+                  />
+                </label>
+              </div>
+
+              <div className="prescription-modal-actions">
+                <button
+                  type="button"
+                  className="prescription-secondary-btn"
+                  onClick={closeCancelModal}
+                >
+                  Go Back
+                </button>
+                <button
+                  type="submit"
+                  className="prescription-danger-btn"
+                  disabled={cancelLoading}
+                >
+                  {cancelLoading ? "Cancelling..." : "Confirm Cancel"}
                 </button>
               </div>
             </form>

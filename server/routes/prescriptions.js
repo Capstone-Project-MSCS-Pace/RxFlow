@@ -1,10 +1,14 @@
 import express from "express";
 import {
   approvePrescriptionEtIn,
+  cancelPrescription,
   createPrescriptionEntry,
   createPrescriptionManual,
+  getLotsForPrescription,
   getPrescription,
   listPrescriptions,
+  markPrescriptionPickedUp,
+  markPrescriptionReady,
   patchPrescriptionInsurance,
   syncFhirPrescriptions,
 } from "../controllers/prescriptionController.js";
@@ -70,6 +74,24 @@ router.put(
   verifyToken,
   authorize(["user", "pharmacist", "admin"]),
   patchPrescriptionInsurance,
+);
+
+router.get("/:id/lots", verifyToken, authorizePharmacistOnly, getLotsForPrescription);
+
+router.post("/:id/ready", verifyToken, authorizePharmacistOnly, markPrescriptionReady);
+
+router.post(
+  "/:id/picked-up",
+  verifyToken,
+  authorize(["user", "pharmacist", "admin"]),
+  markPrescriptionPickedUp,
+);
+
+router.post(
+  "/:id/cancel",
+  verifyToken,
+  authorize(["pharmacist", "admin"]),
+  cancelPrescription,
 );
 
 router.get("/:id", verifyToken, getPrescription);
